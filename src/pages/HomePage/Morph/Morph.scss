@@ -1,0 +1,24 @@
+@import '~styles/variables';
+
+.controlls {
+  position: fixed;
+  top: 50px;
+  left: 100px;
+  z-index: 9999;
+}
+
+.switchBtn {
+  cursor: pointer;
+  background-color: #fff;
+}
+
+.hidden {
+  position: fixed;
+  opacity: 0;
+  left: 10000vw;
+}
+
+button {
+  padding: 6px;
+  font-size: 22px;
+}
