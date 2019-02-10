@@ -3,19 +3,24 @@ import CSSModules from 'react-css-modules';
 import styles from './Morph.scss';
 import Morphling from './Morphling';
 import { path1, path2, path3 } from '_data/figures';
+import img1 from '_images/1.jpg';
+import img2 from '_images/2.jpg';
+import img3 from '_images/3.jpg';
 
 class Morph extends React.Component {
   constructor() {
     super();
     this.morphling = null;
-    this.Morphling = new Morphling([path1, path2, path3], path1);
+    this.Morphling = new Morphling(
+      [path1, path2, path3],
+      [img1, img2, img3],
+      path1,
+    );
   }
 
   componentDidMount() {
-    const images = document.getElementsByTagName('img');
     this.Morphling.init('canvas');
     this.Morphling.render();
-    console.log(images);
   }
 
   shouldComponentUpdate = () => false;
@@ -33,6 +38,7 @@ class Morph extends React.Component {
   }
 
   handleOpen = () => {
+    this.Morphling.setFormFullscreen();
     console.log('click');
   }
 

@@ -2,11 +2,15 @@ import Mouse from './Mouse';
 import Ball from './Ball';
 import { TimelineMax } from 'gsap';
 import { arrayToMatrix } from '_utils/common';
+import { fullScreenFigure } from '_data/figures';
 
 export default class Morphling {
-  constructor(figures, initFigure) {
+  constructor(figures, images, initFigure) {
     this.figures = figures;
-    this.currentPath = initFigure;
+    this.fullScreenFigure = [...fullScreenFigure];
+    this.currentPath = [...initFigure];
+    this.currentImg = images[0]; // eslint-disable-line
+    this.images = images;
     this.canvas = null;
     this.ctx = null;
     this.pos = null;
@@ -15,7 +19,7 @@ export default class Morphling {
     this.isMousDown = false;
     this.figureTimeline = new TimelineMax();
     this.mouse = null;
-    this.figureIndexes = [0, 0];
+    this.figureIndexes = [0, 1];
     this.state = ['original', 'open', 'close'];
     this.curentState = 0;
     this.mode = {
@@ -24,7 +28,6 @@ export default class Morphling {
       isTransfomining: false,
       isImageChanging: false,
     };
-    console.log(this.figures);
     // let curentForm = arrayToMatrix(path1);    let matrix2 = arrayToMatrix(path2);
   }
 
@@ -36,11 +39,25 @@ export default class Morphling {
     this.pos = new Mouse(this.canvas);
     this.mouse = new Ball(0, 0, 30, 'rgba(0,0,0,0)');
     this.pushBalls(this.currentPath);
+    this.images = this.loadImages(this.images);
+    this.currentImg = new Image();
+    this.currentImg.src = this.images[0]; // eslint-disable-line
+    // this.ctx.translate(this.canvas.width / 2, 0);
+  }
+
+  loadImages = (images) => {
+    const loadedImages = [];
+    images.forEach((img) => {
+      const Img = new Image();
+      Img.src = img;
+      loadedImages.push(img);
+    });
+    return loadedImages;
   }
 
   pushBalls = (path) => {
     arrayToMatrix(path).forEach((point) => {
-      this.balls.push(new Ball(point[0], point[1]));
+      this.balls.push(new Ball(point[0] + (this.canvas.width / 2), point[1]));
     });
   }
 
@@ -60,22 +77,13 @@ export default class Morphling {
       ctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x) * 0.5, (p0.y + p1.y) * 0.5);
     }
     ctx.closePath();
-    // ctx.fill();
-    const radialGradient = this.ctx.createRadialGradient(200, 200, 350, 200, 200, 400);
-    radialGradient.addColorStop(0, 'white');
-    radialGradient.addColorStop(1, 'black');
-    this.ctx.fillStyle = radialGradient;
-    this.ctx.lineWidth = 50;
-    this.ctx.strokeStyle = radialGradient;
-    this.ctx.stroke();
-    // ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-    ctx.lineWidth = 100;
-    ctx.stroke();
+    // ctx.lineWidth = 10;
+    ctx.fill();
   }
 
   changeFigureTo = (nextFigurePath, duration, calback) => {
     this.mode.isTransfomining = true;
-    console.log('path', this.currentPath);
+    console.log(this.figures, 'next');
     this.figureTimeline.to(this.currentPath, duration, nextFigurePath)
       .eventCallback('onComplete', calback);
   }
@@ -97,31 +105,16 @@ export default class Morphling {
     this.changeFigureTo(this.figures[this.figureIndexes[0]], 2, this.handleCompleteTransform);
   }
 
-  nextFormTo = (next) => {
-    const activeState = this.figureTimeline.getActive(true, true, true)[0];
-    this.figureIndexes[0] = next;
-    if (activeState) {
-      this.figureTimeline.clear();
-      this.currentPath = activeState.target;
-    }
-    this.changeFigureTo(this.figures[this.figureIndexes[0]], 2, this.handleCompleteTransform);
-  }
-
-  comeToLifeCurentFigure = () => {
-    if (this.mode.autoChangeFigure) {
-      this.figureIndexes[1] = this.getNextFormIndex(
-        this.figureIndexes[1],
-        this.figures[this.figureIndexes[0]]);
-      this.changeFigureTo(
-        this.figures[this.figureIndexes[0]][this.figureIndexes[1]],
-        5,
-        this.comeToLifeCurentFigure);
-    }
+  setFormFullscreen = () => {
+    // this.figureIndexes[0] = this.getNextFormIndex(this.figureIndexes[0], this.figures);
+    this.figureTimeline.clear();
+    this.changeFigureTo(this.fullScreenFigure, 2, this.handleCompleteTransform);
   }
 
   render = () => {
-    window.requestAnimationFrame(this.render);
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.drawImage(this.currentImg, 0, 0);
+    this.ctx.globalCompositeOperation = 'destination-in';
     this.mouse.setPos(this.pos.x, this.pos.y);
     const matrix = arrayToMatrix(this.currentPath);
     this.balls.forEach((ball, i) => {
@@ -130,7 +123,10 @@ export default class Morphling {
       ball.originalX = matrix[i][0];  // eslint-disable-line
       ball.originalY = matrix[i][1];  // eslint-disable-line
       ball.think(this.pos, true);
+      // ball.draw(this.ctx);
     });
     this.connectDots(this.balls, this.ctx);
+    this.ctx.globalCompositeOperation = 'source-over';
+    window.requestAnimationFrame(this.render);
   }
 }

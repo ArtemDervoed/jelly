@@ -26,10 +26,10 @@ export default class Ball {
 
     const dist = Math.sqrt((dx * dx) + (dy * dy));
     // interaction
-    if (dist < 100) {
+    if (dist < 30) {
       const angle = Math.atan2(dy, dx);
-      const tx = mouse.x + (Math.cos(angle) * 100);
-      const ty = mouse.y + (Math.sin(angle) * 100);
+      const tx = mouse.x + (Math.cos(angle) * 30);
+      const ty = mouse.y + (Math.sin(angle) * 30);
 
       this.vx += tx - this.x;
       this.vy += ty - this.y;
