@@ -81,6 +81,15 @@ class Morph extends React.Component {
     this.Morphling.moveCenter(e.clientX, e.clientY);
   }
 
+
+  handleStartStaticAnimation = () => {
+    this.Morphling.startStaticAnimation();
+  }
+
+  handleStopStaticAnimation = () => {
+    this.Morphling.stopStaticAnimation();
+  }
+
   render() {
     console.log('render');
     return (
@@ -94,6 +103,12 @@ class Morph extends React.Component {
           <button className={styles.switchBtn} onClick={this.handleNextImage}>Next Image</button>
           <button className={styles.switchBtn} onClick={this.handleRestoreTheOriginalForm}>
             Restore original form
+          </button>
+          <button className={styles.switchBtn} onClick={this.handleStartStaticAnimation}>
+            Start s anim
+          </button>
+          <button className={styles.switchBtn} onClick={this.handleStopStaticAnimation}>
+            Stop s anim
           </button>
         </div>
         <img src={img1} alt="" styleName="hidden" />

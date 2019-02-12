@@ -1,6 +1,7 @@
 import Mouse from './Mouse';
 import Ball from './Ball';
 import { TimelineMax } from 'gsap';
+import { drawImageProp } from '_utils/common';
 
 export default class Morphling {
   constructor(radiuses, fullScreenRadiuses) {
@@ -27,7 +28,7 @@ export default class Morphling {
     this.figureIndexes = [0, 1];
     this.currentPath = [...radiuses[this.figureIndexes[0]]];
     this.imageIndexes = [0, 1];
-    this.state = ['original', 'open', 'close'];
+    this.isStaticAnimationWork = false;
     this.curentState = 0;
     this.isFirstClick = true;
     this.isImageFading = false;
@@ -46,9 +47,44 @@ export default class Morphling {
   }
 
 
-  moveCenter = (x, y) => {
+  moveCenter = (x, y, calback) => {
     this.centerTimeline.clear();
-    this.centerTimeline.to(this.center, 2, { x, y });
+    this.centerTimeline.to(this.center, 2, { x, y })
+      .eventCallback('onComplete', calback);
+  }
+
+  staticAnimation = () => {
+    if (this.isStaticAnimationWork) {
+      const correctedPath = this.currentPath.map((point) => { // eslint-disable-line
+        return this.getRandomInt(point - 5, point + 5);
+      });
+      const negativeX = this.getRandomInt(0, 1);
+      const negativeY = this.getRandomInt(0, 1);
+
+      let x = this.getRandomInt(this.center.x, this.center.x + 10);
+      let y = this.getRandomInt(this.center.y, this.center.y + 10);
+
+      if (negativeX === 1) {
+        x = this.getRandomInt(this.center.x, this.center.x - 10);
+      }
+      if (negativeY === 1) {
+        y = this.getRandomInt(this.center.y, this.center.y - 10);
+      }
+      this.moveCenter(x, y, this.startStaticAnimation);
+      this.changeFigureTo(correctedPath, 2, () => { console.log('aaa'); });
+    } else {
+      this.centerTimeline.clear();
+    }
+  }
+
+  startStaticAnimation = () => {
+    this.isStaticAnimationWork = true;
+    this.staticAnimation();
+  }
+
+  stopStaticAnimation = () => {
+    this.isStaticAnimationWork = false;
+    this.centerTimeline.clear();
   }
 
   createEmptyFigure = () => {
@@ -61,7 +97,7 @@ export default class Morphling {
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
     this.pos = new Mouse(this.canvas);
-    this.mouse = new Ball(0, 0, 30, 'rgba(0,0,0,0)');
+    this.mouse = new Ball(0, 0, 50, 'rgba(0,0,0,0)');
     this.pushBalls();
   }
 
@@ -199,12 +235,22 @@ export default class Morphling {
   }
 
   drawImages = () => {
-    this.ctx.drawImage(
-      this.images[this.imageIndexes[1]], 0, 0,
+    drawImageProp(
+      this.ctx,
+      this.images[this.imageIndexes[1]],
+      0,
+      0,
+      this.canvas.width,
+      this.canvas.height,
     );
     this.ctx.globalAlpha = this.ga.globalAlpha;
-    this.ctx.drawImage(
-      this.images[this.imageIndexes[0]], 0, 0,
+    drawImageProp(
+      this.ctx,
+      this.images[this.imageIndexes[0]],
+      0,
+      0,
+      this.canvas.width,
+      this.canvas.height,
     );
     this.ctx.globalAlpha = 1;
   }
