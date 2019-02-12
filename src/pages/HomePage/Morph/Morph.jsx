@@ -7,6 +7,7 @@ import {
   secondFigureRadiuses,
   thirdFigureRadiuses,
   fourthFigureRadiuses,
+  fullScreenRadiuses,
 } from '_data/figures';
 import img1 from '_images/1.jpg';
 import img2 from '_images/2.jpg';
@@ -21,7 +22,9 @@ class Morph extends React.Component {
       secondFigureRadiuses,
       thirdFigureRadiuses,
       fourthFigureRadiuses,
-    ]);
+    ],
+    fullScreenRadiuses,
+    );
   }
 
   componentDidMount() {
@@ -30,6 +33,7 @@ class Morph extends React.Component {
     this.Morphling.setImages(images);
     this.Morphling.changeFigure();
     this.Morphling.render();
+    this.canvas.addEventListener('click', this.handleMoveCenter);
   }
 
   shouldComponentUpdate = () => false;
@@ -68,17 +72,29 @@ class Morph extends React.Component {
     console.log('click');
   }
 
+  handleRestoreTheOriginalForm = () => {
+    this.Morphling.restoreTheOriginalForm();
+  }
+
+  handleMoveCenter = (e) => {
+    console.log(e.clientX, e.clientY);
+    this.Morphling.moveCenter(e.clientX, e.clientY);
+  }
+
   render() {
     console.log('render');
     return (
       <React.Fragment>
         <div className={styles.controlls}>
           <button className={styles.switchBtn} onClick={this.handlePaused}>Paused</button>
-          <button className={styles.switchBtn} onClick={this.handleContune}>Start</button>
+          <button className={styles.switchBtn} onClick={this.handleContune}>Set center</button>
           <button className={styles.switchBtn} onClick={this.handleClose}>Close</button>
           <button className={styles.switchBtn} onClick={this.handleOpen}>Open</button>
           <button className={styles.switchBtn} onClick={this.handleNextForm}>Next</button>
           <button className={styles.switchBtn} onClick={this.handleNextImage}>Next Image</button>
+          <button className={styles.switchBtn} onClick={this.handleRestoreTheOriginalForm}>
+            Restore original form
+          </button>
         </div>
         <img src={img1} alt="" styleName="hidden" />
         <img src={img2} alt="" styleName="hidden" />

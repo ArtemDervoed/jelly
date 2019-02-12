@@ -1,15 +1,13 @@
 import Mouse from './Mouse';
 import Ball from './Ball';
 import { TimelineMax } from 'gsap';
-// import { arrayToMatrix } from '_utils/common';
-// import { bigRect } from '_data/figures';
 
 export default class Morphling {
-  constructor(radiuses) {
+  constructor(radiuses, fullScreenRadiuses) {
     this.figures = [];
     this.radiuses = [...radiuses];
     this.pointsCount = 32;
-    this.fullScreenFigure = [];
+    this.fullScreenFigure = [...fullScreenRadiuses];
     this.emptyFigure = [];
     this.currentImg = null; // eslint-disable-line
     this.images = [];
@@ -21,8 +19,10 @@ export default class Morphling {
     this.balls = [];
     this.center = { x: 0, y: 0 };
     this.isMousDown = false;
+    this.emptyRadiuses = [];
     this.figureTimeline = new TimelineMax();
     this.imageTimeline = new TimelineMax();
+    this.centerTimeline = new TimelineMax();
     this.mouse = null;
     this.figureIndexes = [0, 1];
     this.currentPath = [...radiuses[this.figureIndexes[0]]];
@@ -38,12 +38,21 @@ export default class Morphling {
       isImageChanging: false,
     };
     window.addEventListener('resize', this.handleResize);
-    // let curentForm = arrayToMatrix(path1);    let matrix2 = arrayToMatrix(path2);
   }
 
   handleResize = () => {
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
+  }
+
+
+  moveCenter = (x, y) => {
+    this.centerTimeline.clear();
+    this.centerTimeline.to(this.center, 2, { x, y });
+  }
+
+  createEmptyFigure = () => {
+    this.emptyRadiuses = Array.from({ length: this.pointsCount }, () => -this.radius);
   }
 
   init = (canvasSelector) => {
@@ -168,12 +177,18 @@ export default class Morphling {
 
   setFormFullscreen = () => {
     this.figureTimeline.clear();
-    this.changeFigureTo(this.fullScreenFigure, 2, this.handleCompleteTransform);
+    this.changeFigureTo(this.fullScreenFigure, 1, this.handleCompleteTransform);
   }
 
   setFormEmptyState = () => {
     this.figureTimeline.clear();
-    this.changeFigureTo(this.emptyFigure, 2, this.handleCompleteTransform);
+    this.createEmptyFigure();
+    this.changeFigureTo(this.emptyRadiuses, 2, this.handleCompleteTransform);
+  }
+
+  restoreTheOriginalForm = () => {
+    this.figureTimeline.clear();
+    this.changeFigureTo(this.radiuses[this.figureIndexes[0]], 1, this.handleCompleteTransform);
   }
 
   processingPoints = (pos) => {
