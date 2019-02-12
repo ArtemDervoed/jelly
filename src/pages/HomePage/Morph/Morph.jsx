@@ -2,7 +2,12 @@ import React from 'react';
 import CSSModules from 'react-css-modules';
 import styles from './Morph.scss';
 import Morphling from './Morphling';
-import { elipsMoreDots } from '_data/figures';
+import {
+  firstFigureRadiuses,
+  secondFigureRadiuses,
+  thirdFigureRadiuses,
+  fourthFigureRadiuses,
+} from '_data/figures';
 import img1 from '_images/1.jpg';
 import img2 from '_images/2.jpg';
 import img3 from '_images/3.jpg';
@@ -11,13 +16,19 @@ class Morph extends React.Component {
   constructor() {
     super();
     this.morphling = null;
-    this.Morphling = new Morphling();
+    this.Morphling = new Morphling([
+      firstFigureRadiuses,
+      secondFigureRadiuses,
+      thirdFigureRadiuses,
+      fourthFigureRadiuses,
+    ]);
   }
 
   componentDidMount() {
     const images = document.getElementsByClassName(styles.hidden);
     this.Morphling.init('canvas');
     this.Morphling.setImages(images);
+    this.Morphling.changeFigure();
     this.Morphling.render();
   }
 
@@ -29,28 +40,7 @@ class Morph extends React.Component {
     return Math.floor(Math.random() * (max - min + 1)) + min; // eslint-disable-line
   }
 
-  generateBigFigure = (inputElips) => {
-    const figere = [];
-    for (let i = 0; i < elipsMoreDots.length - 1; i += 2) {
-      figere.push((inputElips[i] * 20) - (window.innerWidth * 2));
-      figere.push((inputElips[i + 1] * 20) - (window.innerHeight * 2));
-    }
-    return figere;
-  }
-
-  generateFigure = (inputElips) => {
-    const figere = [];
-    for (let i = 0; i < elipsMoreDots.length - 1; i += 2) {
-      const shift = 100; // this.getRandomInt(-30, 30);
-      // const a = 2 * Math.sqrt(shift * shift);
-      figere.push(inputElips[i] + shift);
-      figere.push(inputElips[i + 1] + shift);
-    }
-    return figere;
-  }
-
   handlePaused = () => {
-    this.Morphling.createFigure();
     console.log('click');
   }
 

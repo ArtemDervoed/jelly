@@ -1,23 +1,16 @@
 import Mouse from './Mouse';
 import Ball from './Ball';
 import { TimelineMax } from 'gsap';
-import { arrayToMatrix } from '_utils/common';
+// import { arrayToMatrix } from '_utils/common';
 // import { bigRect } from '_data/figures';
 
-// const deltas = [
-//   0, 10, 10, 40, 30, 20, 10, 5,
-//   0, -10, -10, -30, -20, -10, 0, 0,
-//   0, 10, 10, 40, 50, 30, 10, 0,
-//   0, 5, 10, 10, 10, 10, 5, 0,
-// ];
-
 export default class Morphling {
-  constructor() {
+  constructor(radiuses) {
     this.figures = [];
+    this.radiuses = [...radiuses];
     this.pointsCount = 32;
     this.fullScreenFigure = [];
     this.emptyFigure = [];
-    this.currentPath = [];
     this.currentImg = null; // eslint-disable-line
     this.images = [];
     this.ga = { globalAlpha: 1 };
@@ -32,6 +25,7 @@ export default class Morphling {
     this.imageTimeline = new TimelineMax();
     this.mouse = null;
     this.figureIndexes = [0, 1];
+    this.currentPath = [...radiuses[this.figureIndexes[0]]];
     this.imageIndexes = [0, 1];
     this.state = ['original', 'open', 'close'];
     this.curentState = 0;
@@ -59,7 +53,7 @@ export default class Morphling {
     this.canvas.height = window.innerHeight;
     this.pos = new Mouse(this.canvas);
     this.mouse = new Ball(0, 0, 30, 'rgba(0,0,0,0)');
-    this.pushBalls(this.currentPath);
+    this.pushBalls();
   }
 
   setEmptyFigure = (size) => {
@@ -96,8 +90,8 @@ export default class Morphling {
     for (let i = 0; i < this.pointsCount; i += 1) {
       this.balls.push(
         new Ball(
-          Math.round(this.center.x + this.radius * Math.cos(i * 2 * Math.PI / this.pointsCount), 1), // eslint-disable-line
-          Math.round(this.center.y + this.radius * Math.sin(i * 2 * Math.PI / this.pointsCount), 1), // eslint-disable-line
+          this.calcX(this.center.x, this.radius, 0, (i * 2 * Math.PI / this.pointsCount)), // eslint-disable-line
+          this.calcY(this.center.y, this.radius, 0, (i * 2 * Math.PI / this.pointsCount)), // eslint-disable-line
         ),
       );
     }
@@ -105,11 +99,7 @@ export default class Morphling {
 
   setCenter = (x, y) => {
     this.center = { x, y };
-    // this.ctx.save();
-    this.balls = [];
-    this.pushBalls();
-    // this.ctx.translate(x, y);
-    // this.ctx.restore();
+    this.changeFigure();
   }
 
   getRandomInt = (min, max) => {
@@ -118,23 +108,20 @@ export default class Morphling {
     return Math.floor(Math.random() * (max - min + 1)) + min; // eslint-disable-line
   }
 
-  createFigure = () => {
+  changeFigure = () => {
     this.balls.forEach((point, i) => {
-      const d = this.getRandomInt(-10, 50);
-      const nextX = Math.round(this.center.x + (this.radius + d) * Math.cos(i * 2 * Math.PI / this.pointsCount), 1); // eslint-disable-line
-      const nextY = Math.round(this.center.y + (this.radius + d) * Math.sin(i * 2 * Math.PI / this.pointsCount), 1); // eslint-disable-line
+      const nextX = this.calcX(this.center.x, this.radius, this.currentPath[i], (i * 2 * Math.PI / this.pointsCount)); // eslint-disable-line
+      const nextY = this.calcY(this.center.y, this.radius, this.currentPath[i], (i * 2 * Math.PI / this.pointsCount)); // eslint-disable-line
       point.setPos(nextX, nextY);
       point.setOldPos(nextX, nextY);
     });
   }
 
-  // calcX = (center, radius, d, angle) => {
-  //   return Math.round(center + (radius + d) * Math.cos(angle), 1); // eslint-disable-line
-  // }
-  //
-  // calcY = (center, radius, d, angle) => {
-  //   return Math.round(center + (radius + d) * Math.sin(angle), 1); // eslint-disable-line
-  // }
+  calcX = (center, radius, d, angle) =>
+    Math.round(center + (radius + d) * Math.cos(angle), 1); // eslint-disable-line
+
+  calcY = (center, radius, d, angle) =>
+    Math.round(center + (radius + d) * Math.sin(angle), 1); // eslint-disable-line
 
   connectDots = (dots, ctx) => {
     ctx.beginPath();
@@ -152,34 +139,11 @@ export default class Morphling {
       ctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x) * 0.5, (p0.y + p1.y) * 0.5);
     }
     ctx.closePath();
-    // ctx.lineWidth = 10;
     ctx.fill();
-  }
-
-/* eslint-disable */
-  buildNeighbours = (dots) => {
-    for (let i = 0, len = dots.length; i < len; i += 1) {
-      const jp = dots[i];
-      const pi = i === 0 ? len - 1 : i - 1;
-      const ni = i === len - 1 ? 0 : i + 1;
-      jp.setNeighbors(dots[pi], dots[ni]);
-      // console.log(dots[pi], dots[ni],pi,ni);
-      for (let j = 0; j < len; j += 1) {
-        let ojp = dots[j];
-        const curdist = Math.sqrt((ojp.x - jp.x) * (ojp.x - jp.x) + (ojp.y - jp.y) * (ojp.y - jp.y));
-        if (
-          ojp !== jp && ojp !== dots[pi] && ojp !== dots[ni] &&
-            curdist <= 30
-        ) {
-          jp.addAcrossNeighbor(ojp);
-        }
-      }
-    }
   }
 
   changeFigureTo = (nextFigurePath, duration, calback) => {
     this.mode.isTransfomining = true;
-    console.log(this.figures, 'next');
     this.figureTimeline.to(this.currentPath, duration, nextFigurePath)
       .eventCallback('onComplete', calback);
   }
@@ -196,9 +160,10 @@ export default class Morphling {
   }
 
   nextForm = () => {
-    this.figureIndexes[0] = this.getNextFormIndex(this.figureIndexes[0], this.figures);
+    this.figureIndexes[0] = this.getNextFormIndex(this.figureIndexes[0], this.radiuses);
+    console.log(this.figureIndexes[0], this.radiuses);
     this.figureTimeline.clear();
-    this.changeFigureTo(this.figures[this.figureIndexes[0]], 2, this.handleCompleteTransform);
+    this.changeFigureTo(this.radiuses[this.figureIndexes[0]], 1, this.handleCompleteTransform);
   }
 
   setFormFullscreen = () => {
@@ -207,14 +172,13 @@ export default class Morphling {
   }
 
   setFormEmptyState = () => {
-    console.log(this.emptyFigure);
     this.figureTimeline.clear();
     this.changeFigureTo(this.emptyFigure, 2, this.handleCompleteTransform);
   }
 
   processingPoints = (pos) => {
-    const matrix = arrayToMatrix(this.currentPath);
-    this.balls.forEach((ball, i) => {
+    this.changeFigure();
+    this.balls.forEach((ball) => {
       ball.think(pos, true);
     });
   }
