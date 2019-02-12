@@ -4,10 +4,17 @@ import { TimelineMax } from 'gsap';
 import { arrayToMatrix } from '_utils/common';
 // import { bigRect } from '_data/figures';
 
+// const deltas = [
+//   0, 10, 10, 40, 30, 20, 10, 5,
+//   0, -10, -10, -30, -20, -10, 0, 0,
+//   0, 10, 10, 40, 50, 30, 10, 0,
+//   0, 5, 10, 10, 10, 10, 5, 0,
+// ];
+
 export default class Morphling {
   constructor() {
-    this.offset = [0, 0];
     this.figures = [];
+    this.pointsCount = 32;
     this.fullScreenFigure = [];
     this.emptyFigure = [];
     this.currentPath = [];
@@ -16,7 +23,7 @@ export default class Morphling {
     this.ga = { globalAlpha: 1 };
     this.canvas = null;
     this.ctx = null;
-    this.pos = null;
+    this.radius = 200;
     this.scaleFactor = 0.8;
     this.balls = [];
     this.center = { x: 0, y: 0 };
@@ -45,30 +52,23 @@ export default class Morphling {
     this.canvas.height = window.innerHeight;
   }
 
-  init = (canvasSelector, figures, images, initFigure, big) => {
-    this.figures = figures;
-    this.images = images;
-    this.fullScreenFigure = [...big];
-    this.currentImg = images[0]; // eslint-disable-line
-    this.currentPath = [...initFigure];
+  init = (canvasSelector) => {
     this.canvas = document.getElementById(canvasSelector);
     this.ctx = this.canvas.getContext('2d');
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
     this.pos = new Mouse(this.canvas);
-    this.mouse = new Ball(0, 0, 30, 'red');
+    this.mouse = new Ball(0, 0, 30, 'rgba(0,0,0,0)');
     this.pushBalls(this.currentPath);
-    // this.buildNeighbours(this.balls);
-    // this.ctx.translate(this.canvas.width / 2, 0);
-  }
-
-  setOffset = (x, y) => {
-    this.offset[0] = x;
-    this.offset[1] = y;
   }
 
   setEmptyFigure = (size) => {
     this.emptyFigure = [...Array(size).fill(0)];
+  }
+
+  setImages = (images) => {
+    this.images = [...images];
+    this.currentImg = images[0]; // eslint-disable-line
   }
 
   handleCompleteImageAnimation = () => {
@@ -92,53 +92,69 @@ export default class Morphling {
       .eventCallback('onComplete', calback);
   }
 
-  pushBalls = (path) => {
-    const xcoords = [];
-    const ycoords = [];
+  pushBalls = () => {
+    for (let i = 0; i < this.pointsCount; i += 1) {
+      this.balls.push(
+        new Ball(
+          Math.round(this.center.x + this.radius * Math.cos(i * 2 * Math.PI / this.pointsCount), 1), // eslint-disable-line
+          Math.round(this.center.y + this.radius * Math.sin(i * 2 * Math.PI / this.pointsCount), 1), // eslint-disable-line
+        ),
+      );
+    }
+  }
 
-    const matrix = arrayToMatrix(path);
+  setCenter = (x, y) => {
+    this.center = { x, y };
+    // this.ctx.save();
+    this.balls = [];
+    this.pushBalls();
+    // this.ctx.translate(x, y);
+    // this.ctx.restore();
+  }
 
-    matrix.forEach((point) => {
-      const x = point[0] + this.offset[0];
-      const y = point[1] + this.offset[1];
-      xcoords.push(x);
-      ycoords.push(y);
-      this.balls.push(new Ball(x, y));
+  getRandomInt = (min, max) => {
+    min = Math.ceil(min); // eslint-disable-line
+    max = Math.floor(max); // eslint-disable-line
+    return Math.floor(Math.random() * (max - min + 1)) + min; // eslint-disable-line
+  }
+
+  createFigure = () => {
+    this.balls.forEach((point, i) => {
+      const d = this.getRandomInt(-10, 50);
+      const nextX = Math.round(this.center.x + (this.radius + d) * Math.cos(i * 2 * Math.PI / this.pointsCount), 1); // eslint-disable-line
+      const nextY = Math.round(this.center.y + (this.radius + d) * Math.sin(i * 2 * Math.PI / this.pointsCount), 1); // eslint-disable-line
+      point.setPos(nextX, nextY);
+      point.setOldPos(nextX, nextY);
     });
-    this.center = this.findCenterOfCircle(xcoords, ycoords);
   }
 
-  findCenterOfCircle = (xcoords, ycoords) => {
-    const minX = Math.min(...xcoords);
-    const maxX = Math.max(...xcoords);
-    console.log(minX, maxX);
-    const minY = Math.min(...ycoords);
-    const maxY = Math.max(...ycoords);
-    return {
-      xc: minX + ((maxX - minX) / 2),
-      yc: minY + ((maxY - minY) / 2),
-    };
-  }
-
-  // connectDots = (dots, ctx) => {
-  //   ctx.beginPath();
-  //   for (let i = 0, jlen = dots.length; i <= jlen; ++i) { // eslint-disable-line
-  //     const p0 = dots[
-  //       i + 0 >= jlen
-  //         ? i + 0 - jlen // eslint-disable-line
-  //         : i + 0
-  //     ];
-  //     const p1 = dots[
-  //       i + 1 >= jlen
-  //         ? i + 1 - jlen // eslint-disable-line
-  //         : i + 1
-  //     ];
-  //     ctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x) * 0.5, (p0.y + p1.y) * 0.5);
-  //   }
-  //   ctx.closePath();
-  //   // ctx.lineWidth = 10;
-  //   ctx.fill();
+  // calcX = (center, radius, d, angle) => {
+  //   return Math.round(center + (radius + d) * Math.cos(angle), 1); // eslint-disable-line
   // }
+  //
+  // calcY = (center, radius, d, angle) => {
+  //   return Math.round(center + (radius + d) * Math.sin(angle), 1); // eslint-disable-line
+  // }
+
+  connectDots = (dots, ctx) => {
+    ctx.beginPath();
+    for (let i = 0, jlen = dots.length; i <= jlen; ++i) { // eslint-disable-line
+      const p0 = dots[
+        i + 0 >= jlen
+          ? i + 0 - jlen // eslint-disable-line
+          : i + 0
+      ];
+      const p1 = dots[
+        i + 1 >= jlen
+          ? i + 1 - jlen // eslint-disable-line
+          : i + 1
+      ];
+      ctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x) * 0.5, (p0.y + p1.y) * 0.5);
+    }
+    ctx.closePath();
+    // ctx.lineWidth = 10;
+    ctx.fill();
+  }
 
 /* eslint-disable */
   buildNeighbours = (dots) => {
@@ -159,18 +175,6 @@ export default class Morphling {
         }
       }
     }
-  }
-
-  // eslint-enable
-
-  connectDots = (balls) => {
-    this.ctx.beginPath();
-    this.ctx.moveTo(balls[0].x, balls[0].y);
-    balls.forEach((ball) => {
-      this.ctx.lineTo(ball.x, ball.y);
-    });
-    this.ctx.closePath();
-    this.ctx.fill();
   }
 
   changeFigureTo = (nextFigurePath, duration, calback) => {
@@ -211,10 +215,6 @@ export default class Morphling {
   processingPoints = (pos) => {
     const matrix = arrayToMatrix(this.currentPath);
     this.balls.forEach((ball, i) => {
-      ball.x = matrix[i][0] + this.offset[0];  // eslint-disable-line
-      ball.y = matrix[i][1] + this.offset[1];  // eslint-disable-line
-      ball.originalX = matrix[i][0] + this.offset[0];  // eslint-disable-line
-      ball.originalY = matrix[i][1] + this.offset[1];  // eslint-disable-line
       ball.think(pos, true);
     });
   }

@@ -12,12 +12,17 @@ export default class Ball {
     this.color = color || '#ff6600';
     this.friction = 0.35;
     this.springFactor = 0.9;
-    this.interactionDist = 100;
+    this.interactionDist = 50;
   }
 
   setPos = (x, y) => {
     this.x = x;
     this.y = y;
+  }
+
+  setOldPos = (x, y) => {
+    this.originalX = x;
+    this.originalY = y;
   }
 
   think = (mouse) => {

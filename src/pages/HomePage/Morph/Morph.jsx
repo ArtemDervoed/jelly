@@ -16,20 +16,8 @@ class Morph extends React.Component {
 
   componentDidMount() {
     const images = document.getElementsByClassName(styles.hidden);
-    this.Morphling.setOffset((window.innerWidth / 2) + 250, (window.innerHeight / 2) - 250);
-    const figure1 = this.generateFigure(elipsMoreDots);
-    const figure2 = this.generateFigure(elipsMoreDots);
-    const figure3 = this.generateFigure(elipsMoreDots);
-    const figure4 = this.generateFigure(elipsMoreDots);
-    const big = this.generateBigFigure(elipsMoreDots);
-    this.Morphling.init(
-      'canvas',
-      [figure1, figure2, figure3, figure4],
-      images,
-      figure1,
-      big,
-    );
-    this.Morphling.setEmptyFigure(elipsMoreDots.length);
+    this.Morphling.init('canvas');
+    this.Morphling.setImages(images);
     this.Morphling.render();
   }
 
@@ -62,11 +50,13 @@ class Morph extends React.Component {
   }
 
   handlePaused = () => {
+    this.Morphling.createFigure();
     console.log('click');
   }
 
   handleContune = () => {
-    console.log('click');
+    this.Morphling.setCenter(window.innerWidth / 2, window.innerHeight / 2);
+    console.log('click 1');
   }
 
   handleClose = () => {
