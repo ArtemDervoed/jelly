@@ -10,9 +10,10 @@ export default class Ball {
     this.vy = 0;
     this.radius = radius || 2;
     this.color = color || '#ff6600';
-    this.friction = 0.35;
-    this.springFactor = 0.9;
-    this.interactionDist = 50;
+    this.friction = 0.7;
+    this.springFactor = 0.2;
+    this.interactionDist = 40;
+    this.neighbours = [];
   }
 
   setPos = (x, y) => {
@@ -23,6 +24,15 @@ export default class Ball {
   setOldPos = (x, y) => {
     this.originalX = x;
     this.originalY = y;
+  }
+
+  setNeighbours = (points, pos) => {
+    if (pos === 'after') {
+      this.neighbours = [this.neighbours, ...points];
+    }
+    if (pos === 'before') {
+      this.neighbours = [points, ...this.neighbours];
+    }
   }
 
   think = (mouse) => {

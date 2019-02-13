@@ -1,6 +1,6 @@
 import Mouse from './Mouse';
 import Ball from './Ball';
-import { TimelineMax } from 'gsap';
+import { TimelineMax, Power1 } from 'gsap';
 import { drawImageProp } from '_utils/common';
 
 export default class Morphling {
@@ -49,7 +49,7 @@ export default class Morphling {
 
   moveCenter = (x, y, calback) => {
     this.centerTimeline.clear();
-    this.centerTimeline.to(this.center, 2, { x, y })
+    this.centerTimeline.to(this.center, 2, { x, y, ease: Power1.easeInOut })
       .eventCallback('onComplete', calback);
   }
 
@@ -84,7 +84,7 @@ export default class Morphling {
 
   stopStaticAnimation = () => {
     this.isStaticAnimationWork = false;
-    this.centerTimeline.clear();
+    this.centerTimeline.kill();
   }
 
   createEmptyFigure = () => {
@@ -127,7 +127,12 @@ export default class Morphling {
   }
 
   changeImage = (calback) => {
-    this.imageTimeline.fromTo(this.ga, 1, { globalAlpha: 1 }, { globalAlpha: 0 })
+    this.imageTimeline.fromTo(
+      this.ga,
+      1,
+      { globalAlpha: 1, ease: Power1.easeInOut },
+      { globalAlpha: 0, ease: Power1.easeInOut },
+    )
       .eventCallback('onComplete', calback);
   }
 
@@ -135,11 +140,12 @@ export default class Morphling {
     for (let i = 0; i < this.pointsCount; i += 1) {
       this.balls.push(
         new Ball(
-          this.calcX(this.center.x, this.radius, 0, (i * 2 * Math.PI / this.pointsCount)), // eslint-disable-line
-          this.calcY(this.center.y, this.radius, 0, (i * 2 * Math.PI / this.pointsCount)), // eslint-disable-line
+          Math.round(this.calcX(this.center.x, this.radius, 0, (i * 2 * Math.PI / this.pointsCount)), 1), // eslint-disable-line
+          Math.round(this.calcY(this.center.y, this.radius, 0, (i * 2 * Math.PI / this.pointsCount)), 1), // eslint-disable-line
         ),
       );
     }
+    console.log(this.balls[0], this.balls[this.pointsCount - 1]);
   }
 
   setCenter = (x, y) => {
@@ -163,10 +169,10 @@ export default class Morphling {
   }
 
   calcX = (center, radius, d, angle) =>
-    Math.round(center + (radius + d) * Math.cos(angle), 1); // eslint-disable-line
+    center + (radius + d) * Math.cos(angle); // eslint-disable-line
 
   calcY = (center, radius, d, angle) =>
-    Math.round(center + (radius + d) * Math.sin(angle), 1); // eslint-disable-line
+    center + (radius + d) * Math.sin(angle); // eslint-disable-line
 
   connectDots = (dots, ctx) => {
     ctx.beginPath();
@@ -191,6 +197,7 @@ export default class Morphling {
     this.mode.isTransfomining = true;
     this.figureTimeline.to(this.currentPath, duration, nextFigurePath)
       .eventCallback('onComplete', calback);
+    console.log(this.figureTimeline);
   }
 
   handleCompleteTransform = () => {
@@ -229,9 +236,16 @@ export default class Morphling {
 
   processingPoints = (pos) => {
     this.changeFigure();
-    this.balls.forEach((ball) => {
+    this.balls.forEach((ball, i) => {
       ball.think(pos, true);
+      if (i > 0 && i < this.balls.length - 1) {
+        // this.balls[i + 1].think({ x: ball.x, y: ball.y });
+        // this.balls[i - 1].think({ x: ball.x, y: ball.y });
+      }
     });
+    // for (let i = 1; i < this.balls.length - 1; i += 1) {
+    //
+    // }
   }
 
   drawImages = () => {
@@ -263,7 +277,6 @@ export default class Morphling {
     this.processingPoints(this.pos);
     this.connectDots(this.balls, this.ctx);
     this.ctx.globalCompositeOperation = 'source-over';
-    this.mouse.draw(this.ctx);
     window.requestAnimationFrame(this.render);
   }
 }
