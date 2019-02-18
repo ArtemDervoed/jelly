@@ -3366,6 +3366,10 @@ dasherize@2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/dasherize/-/dasherize-2.0.0.tgz#6d809c9cd0cf7bb8952d80fc84fa13d47ddb1308"
 
+dat-gui@^0.5.0:
+  version "0.5.0"
+  resolved "https://registry.yarnpkg.com/dat-gui/-/dat-gui-0.5.0.tgz#1212da836109747d0ac220bad7b07c17daa03583"
+
 data-urls@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/data-urls/-/data-urls-1.0.0.tgz#24802de4e81c298ea8a9388bb0d8e461c774684f"
@@ -10589,6 +10593,10 @@ supports-color@^5.3.0, supports-color@^5.4.0:
   resolved "https://registry.yarnpkg.com/supports-color/-/supports-color-5.4.0.tgz#1c6b337402c2137605efe19f10fec390f6faab54"
   dependencies:
     has-flag "^3.0.0"
+
+svg-points@^6.0.1:
+  version "6.0.1"
+  resolved "https://registry.yarnpkg.com/svg-points/-/svg-points-6.0.1.tgz#d9f60e1ef409051542b30f921207bc4497fed5ec"
 
 svg-tags@^1.0.0:
   version "1.0.0"

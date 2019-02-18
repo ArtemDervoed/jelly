@@ -1,13 +1,14 @@
 import Mouse from './Mouse';
 import Ball from './Ball';
+import { toPoints } from 'svg-points';
 import { TimelineMax, Power1 } from 'gsap';
 import { drawImageProp } from '_utils/common';
 
 export default class Morphling {
-  constructor(radiuses, fullScreenRadiuses) {
+  constructor(fullScreenRadiuses) {
     this.figures = [];
-    this.radiuses = [...radiuses];
-    this.pointsCount = 32;
+    this.radiuses = [];
+    this.pointsCount = 0;
     this.fullScreenFigure = [...fullScreenRadiuses];
     this.emptyFigure = [];
     this.currentImg = null; // eslint-disable-line
@@ -15,18 +16,20 @@ export default class Morphling {
     this.ga = { globalAlpha: 1 };
     this.canvas = null;
     this.ctx = null;
-    this.radius = 200;
+    this.radius = 1;
     this.scaleFactor = 0.8;
     this.balls = [];
-    this.center = { x: 0, y: 0 };
+    this.center = { x: 500, y: 200 };
     this.isMousDown = false;
     this.emptyRadiuses = [];
     this.figureTimeline = new TimelineMax();
     this.imageTimeline = new TimelineMax();
     this.centerTimeline = new TimelineMax();
     this.mouse = null;
+    this.RadiusCircle = null;
+    this.centerBall = null;
     this.figureIndexes = [0, 1];
-    this.currentPath = [...radiuses[this.figureIndexes[0]]];
+    this.currentPath = [];
     this.imageIndexes = [0, 1];
     this.isStaticAnimationWork = false;
     this.curentState = 0;
@@ -44,6 +47,7 @@ export default class Morphling {
   handleResize = () => {
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
+    // this.ctx.scale((window.innerWidth / 1920) * 0.1, (window.innerHeight / 1080) * 0.1);
   }
 
 
@@ -56,19 +60,19 @@ export default class Morphling {
   staticAnimation = () => {
     if (this.isStaticAnimationWork) {
       const correctedPath = this.currentPath.map((point) => { // eslint-disable-line
-        return this.getRandomInt(point - 5, point + 5);
+        return this.getRandomInt(point - 10, point + 10);
       });
       const negativeX = this.getRandomInt(0, 1);
       const negativeY = this.getRandomInt(0, 1);
 
-      let x = this.getRandomInt(this.center.x, this.center.x + 10);
-      let y = this.getRandomInt(this.center.y, this.center.y + 10);
+      let x = this.getRandomInt(this.center.x, this.center.x + 15);
+      let y = this.getRandomInt(this.center.y, this.center.y + 15);
 
       if (negativeX === 1) {
-        x = this.getRandomInt(this.center.x, this.center.x - 10);
+        x = this.getRandomInt(this.center.x, this.center.x - 15);
       }
       if (negativeY === 1) {
-        y = this.getRandomInt(this.center.y, this.center.y - 10);
+        y = this.getRandomInt(this.center.y, this.center.y - 15);
       }
       this.moveCenter(x, y, this.startStaticAnimation);
       this.changeFigureTo(correctedPath, 2, () => { console.log('aaa'); });
@@ -98,7 +102,6 @@ export default class Morphling {
     this.canvas.height = window.innerHeight;
     this.pos = new Mouse(this.canvas);
     this.mouse = new Ball(0, 0, 50, 'rgba(0,0,0,0)');
-    this.pushBalls();
   }
 
   setEmptyFigure = (size) => {
@@ -108,6 +111,21 @@ export default class Morphling {
   setImages = (images) => {
     this.images = [...images];
     this.currentImg = images[0]; // eslint-disable-line
+  }
+
+  setFigures = (figures) => {
+    this.figures = figures;
+    this.radiuses = figures.map((fig) => {
+      this.pth = fig.childNodes[0]; // eslint-disable-line
+      this.points = toPoints({
+        type: 'path',
+        d: this.pth.getAttribute('d'),
+      });
+      return this.convertToPolarCoordinates(this.points).map(point => point.dist);
+    });
+    this.currentPath = [...this.radiuses[0]];
+    this.pointsCount = this.currentPath.length - 1;
+    this.pushBalls();
   }
 
   handleCompleteImageAnimation = () => {
@@ -126,6 +144,17 @@ export default class Morphling {
     this.changeImage(this.handleCompleteImageAnimation);
   }
 
+  nextImgTo = (id) => {
+    if (this.isImageFading) return;
+    this.isImageFading = true;
+    if (!this.isFirstClick) {
+      this.imageIndexes[0] = this.imageIndexes[1]; // eslint-disable-line
+      this.imageIndexes[1] = id;
+    }
+    this.isFirstClick = false;
+    this.changeImage(this.handleCompleteImageAnimation);
+  }
+
   changeImage = (calback) => {
     this.imageTimeline.fromTo(
       this.ga,
@@ -136,21 +165,24 @@ export default class Morphling {
       .eventCallback('onComplete', calback);
   }
 
+  nextImgAndFormTo = (formId, imgId) => {
+    this.nextImgTo(imgId);
+    this.nextFormTo(formId);
+  }
+
   pushBalls = () => {
     for (let i = 0; i < this.pointsCount; i += 1) {
       this.balls.push(
         new Ball(
-          Math.round(this.calcX(this.center.x, this.radius, 0, (i * 2 * Math.PI / this.pointsCount)), 1), // eslint-disable-line
-          Math.round(this.calcY(this.center.y, this.radius, 0, (i * 2 * Math.PI / this.pointsCount)), 1), // eslint-disable-line
+          Math.round(this.calcX(this.center.x, 1, 0, (i * 2 * Math.PI / this.pointsCount)), 1), // eslint-disable-line
+          Math.round(this.calcY(this.center.y, 1, 0, (i * 2 * Math.PI / this.pointsCount)), 1), // eslint-disable-line
         ),
       );
     }
-    console.log(this.balls[0], this.balls[this.pointsCount - 1]);
   }
 
   setCenter = (x, y) => {
     this.center = { x, y };
-    this.changeFigure();
   }
 
   getRandomInt = (min, max) => {
@@ -166,6 +198,47 @@ export default class Morphling {
       point.setPos(nextX, nextY);
       point.setOldPos(nextX, nextY);
     });
+  }
+
+  convertToPolarCoordinates = (points) => {
+    const center = this.findCenter(points);
+    // this.centerBall.x = center.cx + this.center.x;
+    // this.centerBall.y = center.cy + this.center.y;
+    const polarCoordinates = points.map((point) => {
+      const dx = center.cx - point.x;
+      const dy = center.cy - point.y;
+      const dist = Math.sqrt((dx * dx) + (dy * dy));
+      const angle = Math.atan2(dy, dx);
+      return { dist, angle, curve: point.curve };
+    });
+
+    return polarCoordinates;
+  }
+
+  findCenter = (points) => {
+    let top = points[0].y;
+    let left = points[0].x;
+    let right = 0;
+    let bottom = 0;
+    points.forEach((point) => {
+      if (point.y > bottom) {
+        bottom = point.y;
+      }
+      if (point.x > right) {
+        right = point.x;
+      }
+      if (point.y < top) {
+        top = point.y;
+      }
+      if (point.x < left) {
+        left = point.x;
+      }
+    });
+    const center = {
+      cx: top + ((bottom - top) / 2),
+      cy: left + ((right - left) / 2),
+    };
+    return center;
   }
 
   calcX = (center, radius, d, angle) =>
@@ -193,11 +266,21 @@ export default class Morphling {
     ctx.fill();
   }
 
+  // connectDots = (balls, ctx) => {
+  //   ctx.beginPath();
+  //   ctx.moveTo(balls[0].x, balls[0].y);
+  //   balls.forEach((ball) => {
+  //     ctx.lineTo(ball.x, ball.y);
+  //   });
+  //
+  //   ctx.closePath();
+  //   ctx.fill();
+  // }
+
   changeFigureTo = (nextFigurePath, duration, calback) => {
     this.mode.isTransfomining = true;
     this.figureTimeline.to(this.currentPath, duration, nextFigurePath)
       .eventCallback('onComplete', calback);
-    console.log(this.figureTimeline);
   }
 
   handleCompleteTransform = () => {
@@ -214,6 +297,12 @@ export default class Morphling {
   nextForm = () => {
     this.figureIndexes[0] = this.getNextFormIndex(this.figureIndexes[0], this.radiuses);
     console.log(this.figureIndexes[0], this.radiuses);
+    this.figureTimeline.clear();
+    this.changeFigureTo(this.radiuses[this.figureIndexes[0]], 1, this.handleCompleteTransform);
+  }
+
+  nextFormTo = (id) => {
+    this.figureIndexes[0] = id;
     this.figureTimeline.clear();
     this.changeFigureTo(this.radiuses[this.figureIndexes[0]], 1, this.handleCompleteTransform);
   }
@@ -237,15 +326,8 @@ export default class Morphling {
   processingPoints = (pos) => {
     this.changeFigure();
     this.balls.forEach((ball, i) => {
-      ball.think(pos, true);
-      if (i > 0 && i < this.balls.length - 1) {
-        // this.balls[i + 1].think({ x: ball.x, y: ball.y });
-        // this.balls[i - 1].think({ x: ball.x, y: ball.y });
-      }
+      ball.think(pos, i * 0);
     });
-    // for (let i = 1; i < this.balls.length - 1; i += 1) {
-    //
-    // }
   }
 
   drawImages = () => {
