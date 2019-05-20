@@ -89,3 +89,10 @@ export const drawImageProp = (ctx, img, x, y, w, h, offsetX, offsetY) => {
   // fill image in dest. rectangle
   ctx.drawImage(img, cx, cy, cw, ch, x, y, w, h);
 }
+
+export const getNextItemIndex = (curentIndex, collection) => {
+    if (curentIndex === collection.length - 1) {
+      return 0;
+    }
+    return curentIndex + 1;
+  }

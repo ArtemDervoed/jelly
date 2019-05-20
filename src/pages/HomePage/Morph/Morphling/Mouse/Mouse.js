@@ -1,4 +1,4 @@
-// import { arrayToMatrix, inPoly } from '_utils';
+import { inPoly } from '../lib/common';
 
 export default class Mouse {
   constructor(canvas) {
@@ -14,5 +14,9 @@ export default class Mouse {
       this.x = e.clientX;
       this.y = e.clientY;
     };
+  }
+  isInto(balls) {
+    const matrix = balls.map(p => [p.x, p.y]);
+    return Boolean(inPoly(this.x, this.y, matrix));
   }
 }
