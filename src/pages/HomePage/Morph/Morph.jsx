@@ -2,7 +2,7 @@ import React from 'react';
 import CSSModules from 'react-css-modules';
 import styles from './Morph.scss';
 import Morphling from './Morphling';
-import { fullScreenRadiuses, vector, figure } from '_data/figures';
+import { vector, figure } from '_data/figures';
 
 import img1 from '_images/1.jpg';
 import img2 from '_images/2.jpg';
@@ -12,13 +12,13 @@ class Morph extends React.Component {
   constructor() {
     super();
     this.morphling = null;
-    this.Morphling = new Morphling(fullScreenRadiuses);
+    this.Morphling = new Morphling();
   }
 
   componentDidMount() {
     const images = document.getElementsByClassName(styles.hidden);
     this.Morphling.init('canvas');
-    this.Morphling.setFigures([vector, figure]);
+    this.Morphling.setFigures([this.normolizeFigure(vector), this.normolizeFigure(figure)]);
     this.Morphling.setImages(images);
     this.Morphling.setColors(['blue', 'red', 'green']);
     this.Morphling.render();
@@ -31,6 +31,19 @@ class Morph extends React.Component {
     min = Math.ceil(min); // eslint-disable-line
     max = Math.floor(max); // eslint-disable-line
     return Math.floor(Math.random() * (max - min + 1)) + min; // eslint-disable-line
+  }
+
+  normolizeFigure = (points) => {
+    let min = points[0][1];
+    let index = 0;
+    for (let i = 0; i < points.length; i += 1) {
+      if (min > points[i][1]) {
+        min = points[i][1]; // eslint-disable-line
+        index = i;
+      }
+    }
+    const temp = [...points];
+    return temp.splice(index).concat(temp);
   }
 
   handlePaused = () => {

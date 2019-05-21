@@ -3,7 +3,9 @@
 .controlls {
   position: fixed;
   top: 50px;
-  left: 100px;
+  right: 100px;
+  display: flex;
+  flex-direction: column;
   z-index: 9999;
 }
 

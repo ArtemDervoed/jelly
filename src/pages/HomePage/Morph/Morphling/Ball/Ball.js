@@ -11,8 +11,8 @@ export default class Ball {
     this.vy = 0;
     this.radius = radius || 2;
     this.color = color || '#ff6600';
-    this.friction = 0.4;
-    this.springFactor = 0.2;
+    this.friction = 0.5;
+    this.springFactor = 0.7;
     this.interactionDist = 70;
     this.neighbours = [];
   }
@@ -28,7 +28,7 @@ export default class Ball {
   }
 
   setNeighbours = (points) => {
-    this.neighbours = points;
+    this.neighbours = [...points];
   }
 
   think = (mouse) => {

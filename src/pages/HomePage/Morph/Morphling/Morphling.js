@@ -1,33 +1,32 @@
 import Mouse from './Mouse';
 import Ball from './Ball';
 import Background from './Background';
-import { TimelineMax, Power1, TweenMax } from 'gsap';
+import { TweenMax } from 'gsap';
+import SimplexNoise from 'simplex-noise';
 import { getNextItemIndex } from './lib/common';
 
 export default class Morphling {
   static instance;
 
-  constructor(fullScreenRadiuses) {
+  constructor() {
     if (Morphling.instance) {
       return Morphling.instance;
     }
     this.scale = 1;
     this.figures = [];
     this.radiuses = [];
-    this.pointsCount = 0;
-    this.fullScreenFigure = [...fullScreenRadiuses];
+    this.pointsCount = 100;
     this.emptyFigure = [];
     this.canvas = null;
     this.ctx = null;
     this.radius = 1;
     this.balls = [];
-    this.center = { x: 500, y: 200 };
+    this.offset = { x: 0, y: 0 };
     this.emptyRadiuses = [];
     this.Background = new Background(0, 0, window.innerWidth, window.innerHeight);
-    this.centerTimeline = new TimelineMax();
+    this.simplex = new SimplexNoise();
     this.mouse = null;
     this.figureIndexes = [0, 1];
-    this.currentPath = [];
     this.isStaticAnimationWork = false;
     this.curentState = 0;
     this.imageMode = 'images';
@@ -50,34 +49,12 @@ export default class Morphling {
   }
 
 
-  moveCenter = (x, y, calback) => {
-    this.centerTimeline.clear();
-    this.centerTimeline.to(this.center, 2, { x, y, ease: Power1.easeInOut })
-      .eventCallback('onComplete', calback);
+  moveCenter = (x, y) => {
+    TweenMax.to(this.offset, 1, { x, y });
   }
 
   staticAnimation = () => {
-    if (this.isStaticAnimationWork) {
-      const correctedPath = this.currentPath.map((point) => { // eslint-disable-line
-        return this.getRandomInt(point - 10, point + 10);
-      });
-      const negativeX = this.getRandomInt(0, 1);
-      const negativeY = this.getRandomInt(0, 1);
-
-      let x = this.getRandomInt(this.center.x, this.center.x + 15);
-      let y = this.getRandomInt(this.center.y, this.center.y + 15);
-
-      if (negativeX === 1) {
-        x = this.getRandomInt(this.center.x, this.center.x - 15);
-      }
-      if (negativeY === 1) {
-        y = this.getRandomInt(this.center.y, this.center.y - 15);
-      }
-      this.moveCenter(x, y, this.startStaticAnimation);
-      this.changeFigureTo(correctedPath, 2, () => { console.log('aaa'); });
-    } else {
-      this.centerTimeline.clear();
-    }
+    console.log('animated');
   }
 
   startStaticAnimation = () => {
@@ -87,7 +64,6 @@ export default class Morphling {
 
   stopStaticAnimation = () => {
     this.isStaticAnimationWork = false;
-    this.centerTimeline.kill();
   }
 
   createEmptyFigure = () => {
@@ -104,12 +80,30 @@ export default class Morphling {
   createFullScreenFigure = () => {
     const center = this.getCenter(this.balls);
     const fullScreenFigure = [];
+    const side = Math.max(this.canvas.width, this.canvas.height);
     for (let i = 0; i < this.pointsCount; i += 1) {
       fullScreenFigure.push([
-        Math.round(this.calcX(center.x, 1, this.canvas.width * 2, (i * 2 * Math.PI / this.pointsCount)), 1), // eslint-disable-line
-        Math.round(this.calcY(center.y, 1, this.canvas.height * 2, (i * 2 * Math.PI / this.pointsCount)), 1), // eslint-disable-line
+        Math.round(
+          this.calcX(
+            center.x,
+            1,
+            side * 2,
+            (i * 2 * (Math.PI / this.pointsCount)) - (Math.PI / 4),
+          ),
+          1,
+        ),
+        Math.round(
+          this.calcY(
+            center.y,
+            1,
+            side * 2,
+            (i * 2 * (Math.PI / this.pointsCount)) - (Math.PI / 4),
+          ),
+          1,
+        ),
       ]);
     }
+    console.log(fullScreenFigure);
     return fullScreenFigure;
   }
 
@@ -136,9 +130,8 @@ export default class Morphling {
 
   setFigures = (figures) => {
     this.figures = figures;
-    this.currentPath = [...figures[this.figureIndexes[0]]];
-    this.pointsCount = this.currentPath.length - 1;
     this.pushBalls();
+    this.setNeighbours();
   }
 
   nextImg = () => {
@@ -158,15 +151,23 @@ export default class Morphling {
     for (let i = 0; i < this.pointsCount; i += 1) {
       this.balls.push(
         new Ball(
-          this.currentPath[i][0], // eslint-disable-line
-          this.currentPath[i][1], // eslint-disable-line
+          this.figures[this.figureIndexes[0]][i][0],
+          this.figures[this.figureIndexes[0]][i][1],
         ),
       );
     }
   }
 
-  setCenter = (x, y) => {
-    this.center = { x, y };
+  setNeighbours = () => {
+    for (let i = 0; i < this.pointsCount; i += 1) {
+      if (i === 0) {
+        this.balls[i].setNeighbours([this.balls[this.pointsCount - 1], this.balls[i + 1]]);
+      } else if (i === this.pointsCount - 1) {
+        this.balls[i].setNeighbours([this.balls[i - 1], this.balls[0]]);
+      } else {
+        this.balls[i].setNeighbours([this.balls[i - 1], this.balls[i + 1]]);
+      }
+    }
   }
 
   getRandomInt = (min, max) => {
@@ -201,7 +202,7 @@ export default class Morphling {
     };
   }
 
-  connectDots = (dots, ctx) => {
+  connectDots = (dots, ctx, fillMode) => {
     ctx.beginPath();
     for (let i = 0, jlen = dots.length; i <= jlen; ++i) { // eslint-disable-line
       const p0 = dots[
@@ -217,7 +218,12 @@ export default class Morphling {
       ctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x) * 0.5, (p0.y + p1.y) * 0.5);
     }
     ctx.closePath();
-    ctx.fill();
+    if (fillMode === 'stroke') {
+      ctx.stroke();
+    }
+    if (fillMode === 'fill') {
+      ctx.fill();
+    }
   }
 
   changeFigureTo = (nextFigurePath, duration) => {
@@ -227,10 +233,10 @@ export default class Morphling {
           this.balls[i],
           duration,
           {
-            x: nextFigurePath[i][0],
-            y: nextFigurePath[i][1],
-            originalX: nextFigurePath[i][0],
-            originalY: nextFigurePath[i][1],
+            x: nextFigurePath[i][0] + this.offset.x,
+            y: nextFigurePath[i][1] + this.offset.y,
+            originalX: nextFigurePath[i][0] + this.offset.x,
+            originalY: nextFigurePath[i][1] + this.offset.y,
           },
         );
       }
@@ -276,24 +282,46 @@ export default class Morphling {
     });
   }
 
-  render = () => {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  drawBackground = () => {
     if (this.imageMode === 'color') {
       this.Background.drawColors(this.ctx);
     }
     if (this.imageMode === 'images') {
       this.Background.drawImage(this.ctx);
     }
+  }
+
+  renderShadow = (balls) => {
+    const shadow = [...balls];
+    shadow.forEach((item, index) => {
+      item.setPos(
+        this.simplex.noise2D(item.x, index),
+        this.simplex.noise2D(item.y, index),
+      );
+      item.setOldPos(
+        this.simplex.noise2D(item.x, index),
+        this.simplex.noise2D(item.y, index),
+      );
+      return item;
+    });
+    console.log(balls);
+    this.connectDots(shadow, this.ctx, 'stroke');
+  }
+
+  render = () => {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.drawBackground();
     this.ctx.globalCompositeOperation = 'destination-in';
     this.mouse.setPos(this.pos.x, this.pos.y);
     this.processingPoints(this.pos, this.scale);
-    this.connectDots(this.balls, this.ctx);
+    this.connectDots(this.balls, this.ctx, 'fill');
     const isInto = this.pos.isInto(this.balls);
     if (this.isCursorIntoPoly !== isInto) {
       this.isCursorIntoPoly = isInto;
       this.isCursorIntoPolyCalback(isInto);
     }
     this.ctx.globalCompositeOperation = 'source-over';
+    // this.renderShadow(this.balls);
     window.requestAnimationFrame(this.render);
   }
 }
