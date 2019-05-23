@@ -331,7 +331,7 @@ export default class Morphling {
   checkPointDirection = (pos) => {
     const center = this.getCenter(this.balls);
     const dx = pos.x - center.x;
-    const dy = center.y - pos.y;
+    const dy = pos.y - center.y;
     const dist = Math.sqrt((dx * dx) + (dy * dy));
     return {
       dist,
@@ -360,19 +360,23 @@ export default class Morphling {
     }
   }
 
-  handleIntersection = () => {
+  handleIntersection = (isIntoOld) => {
     const { nearPointIndex } = this.calcNearsetPoint(this.pos);
     const wavesLength = 50;
     let delayL = 0;
     let delayR = 0;
     const lastPointIndexR = nearPointIndex + wavesLength;
-    for (let i = nearPointIndex; i <= lastPointIndexR; i += 1) {
+    for (let i = nearPointIndex; i < lastPointIndexR; i += 1) {
       delayL += 1;
       let dx = 1;
       let dy = 1;
+      dx = -5 * Math.cos((i) * 2 * Math.PI);
+      dy = dx;
 
-      dx = 10 * Math.sin((delayL + 1) * 2 * Math.PI);
-      dy = 10 * Math.cos((delayL + 1) * 2 * Math.PI);
+      if (isIntoOld && !this.isInto) {
+        dx *= -2;
+        dy *= -2;
+      }
       const realI = i % this.balls.length;
       const pointDirection = this.checkPointDirection(this.balls[realI]);
       if (pointDirection.dx > 0) {
@@ -390,6 +394,10 @@ export default class Morphling {
       if (pointDirection.dy < 0) {
         dy *= -1;
       }
+      const slower = delayL / 10;
+
+      dx /= slower;
+      dy /= slower;
       TweenMax.to(
         this.balls[realI],
         0.3,
@@ -398,7 +406,6 @@ export default class Morphling {
           y: this.balls[realI].y + dy,
           originalX: this.balls[realI].x + dx,
           originalY: this.balls[realI].y + dy,
-          yoyo: true,
           onComplete: () => {
             TweenMax.to(
               this.balls[realI],
@@ -420,8 +427,14 @@ export default class Morphling {
       let dx = 1;
       let dy = 1;
 
-      dx = 10 * Math.sin((delayR + 1) * 2 * Math.PI);
-      dy = 10 * Math.cos((delayR + 1) * 2 * Math.PI);
+      dx = -5 * Math.cos((j) * 2 * Math.PI);
+      dy = dx;
+
+      if (isIntoOld && !this.isInto) {
+        dx *= -2;
+        dy *= -2;
+      }
+
       const realI = j >= 0 ?
         j % this.balls.length :
         this.balls.length - Math.abs((j % this.balls.length));
@@ -441,6 +454,12 @@ export default class Morphling {
       if (pointDirection.dy < 0) {
         dy *= -1;
       }
+
+      const slower = delayR / 10;
+
+      dx /= slower;
+      dy /= slower;
+
       TweenMax.to(
         this.balls[realI],
         0.3,
@@ -449,7 +468,6 @@ export default class Morphling {
           y: this.balls[realI].y + dy,
           originalX: this.balls[realI].x + dx,
           originalY: this.balls[realI].y + dy,
-          yoyo: true,
           onComplete: () => {
             TweenMax.to(
               this.balls[realI],
@@ -481,9 +499,10 @@ export default class Morphling {
     }
     // this.processingPoints(this.pos, this.scale);
     this.connectDots(this.balls, this.ctx, 'fill');
+    const isIntoOld = this.isInto;
     this.isInto = this.pos.isInto(this.balls);
     if (this.isCursorIntoPoly !== this.isInto) {
-      this.handleIntersection();
+      this.handleIntersection(isIntoOld);
       this.isCursorIntoPoly = this.isInto;
       this.isCursorIntoPolyCalback(this.isInto);
     }
