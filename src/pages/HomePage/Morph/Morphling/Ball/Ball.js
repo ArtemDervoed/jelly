@@ -4,6 +4,8 @@ export default class Ball {
   constructor(x, y, radius, color) {
     this.x = x || 0;
     this.y = y || 0;
+    this.oldX = x || 0;
+    this.oldY = y || 0;
     this.index = 0;
     this.originalX = x || 0;
     this.originalY = y || 0;
@@ -13,7 +15,7 @@ export default class Ball {
     this.color = color || '#ff6600';
     this.friction = 0.5;
     this.springFactor = 0.7;
-    this.interactionDist = 70;
+    this.interactionDist = 50;
     this.neighbours = [];
   }
 
@@ -45,6 +47,26 @@ export default class Ball {
       this.vx += tx - this.x;
       this.vy += ty - this.y;
     }
+
+    const dx1 = -(this.x - this.originalX);
+    const dy1 = -(this.y - this.originalY);
+
+    this.vx += dx1 * this.springFactor;
+    this.vy += dy1 * this.springFactor;
+
+    this.vx *= this.friction;
+    this.vy *= this.friction;
+
+    this.x += this.vx;
+    this.y += this.vy;
+  }
+
+  think2 = (dist, angle) => {
+    const tx = Math.cos(angle) * dist;
+    const ty = Math.sin(angle) * dist;
+
+    this.vx += tx - this.x;
+    this.vy += ty - this.y;
 
     const dx1 = -(this.x - this.originalX);
     const dy1 = -(this.y - this.originalY);

@@ -21,7 +21,9 @@ export default class Morphling {
     this.ctx = null;
     this.radius = 1;
     this.balls = [];
-    this.offset = { x: 0, y: 0 };
+    this.shadow = [];
+    this.isInto = false;
+    this.offset = { x: 100, y: 100 };
     this.emptyRadiuses = [];
     this.Background = new Background(0, 0, window.innerWidth, window.innerHeight);
     this.simplex = new SimplexNoise();
@@ -30,6 +32,8 @@ export default class Morphling {
     this.isStaticAnimationWork = false;
     this.curentState = 0;
     this.imageMode = 'images';
+    this.time = 0;
+    this.showShadow = true;
     this.isCursorIntoPolyCalback = () => {};
     this.mode = {
       autoChangeImage: false,
@@ -48,22 +52,28 @@ export default class Morphling {
     this.Background.setSize(this.canvas.width, this.canvas.height);
   }
 
-
-  moveCenter = (x, y) => {
-    TweenMax.to(this.offset, 1, { x, y });
-  }
-
-  staticAnimation = () => {
-    console.log('animated');
+  staticAnimation = (balls, time, isNegative) => {
+    balls.forEach((item) => {
+      const n = 12 * this.simplex.noise3D(item.oldX / 330, item.oldY / 330, time / 100);
+      const align = isNegative ? -n : n;
+      TweenMax.to(
+        item,
+        1,
+        {
+          x: item.oldX + align,
+          y: item.oldY + align,
+        },
+      );
+    });
   }
 
   startStaticAnimation = () => {
     this.isStaticAnimationWork = true;
-    this.staticAnimation();
   }
 
   stopStaticAnimation = () => {
     this.isStaticAnimationWork = false;
+    this.changeFigureTo(this.figures[this.figureIndexes[0]], 1);
   }
 
   createEmptyFigure = () => {
@@ -103,7 +113,6 @@ export default class Morphling {
         ),
       ]);
     }
-    console.log(fullScreenFigure);
     return fullScreenFigure;
   }
 
@@ -113,6 +122,7 @@ export default class Morphling {
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
     this.pos = new Mouse(this.canvas);
+    this.pos.setOffset(this.offset.x, this.offset.y);
     this.mouse = new Ball(0, 0, 50, 'rgba(0,0,0,0)');
   }
 
@@ -155,6 +165,12 @@ export default class Morphling {
           this.figures[this.figureIndexes[0]][i][1],
         ),
       );
+      this.shadow.push(
+        new Ball(
+          this.figures[this.figureIndexes[0]][i][0],
+          this.figures[this.figureIndexes[0]][i][1],
+        ),
+      );
     }
   }
 
@@ -192,8 +208,8 @@ export default class Morphling {
     let ally = 0;
     const seg = balls;
     for (let i = 0; i < seg.length; i += 1) {
-      allx += seg[i].x;
-      ally += seg[i].y;
+      allx += seg[i].oldX;
+      ally += seg[i].oldY;
       count += 1;
     }
     return {
@@ -219,6 +235,7 @@ export default class Morphling {
     }
     ctx.closePath();
     if (fillMode === 'stroke') {
+      ctx.lineWidth = 1;
       ctx.stroke();
     }
     if (fillMode === 'fill') {
@@ -228,19 +245,34 @@ export default class Morphling {
 
   changeFigureTo = (nextFigurePath, duration) => {
     for (let i = 0; i < nextFigurePath.length; i += 1) {
-      if (this.balls[i]) {
-        TweenMax.to(
-          this.balls[i],
-          duration,
-          {
-            x: nextFigurePath[i][0] + this.offset.x,
-            y: nextFigurePath[i][1] + this.offset.y,
-            originalX: nextFigurePath[i][0] + this.offset.x,
-            originalY: nextFigurePath[i][1] + this.offset.y,
-          },
-        );
-      }
+      TweenMax.to(
+        this.balls[i],
+        duration,
+        {
+          x: nextFigurePath[i][0],
+          y: nextFigurePath[i][1],
+          originalX: nextFigurePath[i][0],
+          originalY: nextFigurePath[i][1],
+        },
+      );
+      TweenMax.to(
+        this.shadow[i],
+        duration,
+        {
+          x: nextFigurePath[i][0],
+          y: nextFigurePath[i][1],
+          originalX: nextFigurePath[i][0],
+          originalY: nextFigurePath[i][1],
+        },
+      );
     }
+  }
+
+  moveCenter = (x, y) => {
+    // const center = this.getCenter(this.balls);
+    this.offset.x = x;
+    this.offset.y = y;
+    this.pos.setOffset(x, y);
   }
 
   handleCompleteTransform = () => {
@@ -276,9 +308,46 @@ export default class Morphling {
     this.changeFigureTo(this.figures[this.figureIndexes[0]], duration || 1);
   }
 
-  processingPoints = (pos, scale) => {
+  calcNearsetPoint = (mouse) => {
+    let nearPointIndex = 0;
+    let minDist = Number.MAX_VALUE;
+    this.balls.forEach((point, i) => {
+      const dx = point.x - mouse.x;
+      const dy = point.y - mouse.y;
+      const dist = Math.sqrt((dx * dx) + (dy * dy));
+      if (dist <= minDist) {
+        minDist = dist;
+        nearPointIndex = i;
+      }
+    });
+    return {
+      nearPointIndex,
+      minDist,
+      mx: mouse.x,
+      my: mouse.y,
+    };
+  }
+
+  checkPointDirection = (pos) => {
+    const center = this.getCenter(this.balls);
+    const dx = pos.x - center.x;
+    const dy = center.y - pos.y;
+    const dist = Math.sqrt((dx * dx) + (dy * dy));
+    return {
+      dist,
+      dx,
+      dy,
+    };
+  }
+
+  processingPoints = (pos) => {
+    // const nearPointDistIndex = this.calcNearsetPoint(pos);
+    // this.checkCursorDirection(pos);
     this.balls.forEach((ball) => {
-      ball.think(pos, scale);
+      ball.think(pos, 1);
+    });
+    this.shadow.forEach((ball) => {
+      ball.think(pos, 1);
     });
   }
 
@@ -291,37 +360,144 @@ export default class Morphling {
     }
   }
 
-  renderShadow = (balls) => {
-    const shadow = [...balls];
-    shadow.forEach((item, index) => {
-      item.setPos(
-        this.simplex.noise2D(item.x, index),
-        this.simplex.noise2D(item.y, index),
-      );
-      item.setOldPos(
-        this.simplex.noise2D(item.x, index),
-        this.simplex.noise2D(item.y, index),
-      );
-      return item;
-    });
-    console.log(balls);
-    this.connectDots(shadow, this.ctx, 'stroke');
+  handleIntersection = () => {
+    const { nearPointIndex } = this.calcNearsetPoint(this.pos);
+    const wavesLength = 50;
+    let delayL = 0;
+    let delayR = 0;
+    const lastPointIndexR = nearPointIndex + wavesLength;
+    for (let i = nearPointIndex; i <= lastPointIndexR; i += 1) {
+      delayL += 1;
+      let dx = 1;
+      let dy = 1;
+
+      dx = 10 * Math.sin((delayL + 1) * 2 * Math.PI);
+      dy = 10 * Math.cos((delayL + 1) * 2 * Math.PI);
+      const realI = i % this.balls.length;
+      const pointDirection = this.checkPointDirection(this.balls[realI]);
+      if (pointDirection.dx > 0) {
+        dx *= 1;
+      }
+
+      if (pointDirection.dx < 0) {
+        dx *= -1;
+      }
+
+      if (pointDirection.dy > 0) {
+        dy *= 1;
+      }
+
+      if (pointDirection.dy < 0) {
+        dy *= -1;
+      }
+      TweenMax.to(
+        this.balls[realI],
+        0.3,
+        {
+          x: this.balls[realI].x + dx,
+          y: this.balls[realI].y + dy,
+          originalX: this.balls[realI].x + dx,
+          originalY: this.balls[realI].y + dy,
+          yoyo: true,
+          onComplete: () => {
+            TweenMax.to(
+              this.balls[realI],
+              0.3,
+              {
+                x: this.figures[this.figureIndexes[0]][realI][0],
+                y: this.figures[this.figureIndexes[0]][realI][1],
+                originalX: this.figures[this.figureIndexes[0]][realI][0],
+                originalY: this.figures[this.figureIndexes[0]][realI][1],
+              },
+            );
+          },
+        },
+      ).delay(delayL / 20);
+    }
+    const lastPointIndexL = nearPointIndex - wavesLength;
+    for (let j = nearPointIndex; j >= lastPointIndexL; j -= 1) {
+      delayR += 1;
+      let dx = 1;
+      let dy = 1;
+
+      dx = 10 * Math.sin((delayR + 1) * 2 * Math.PI);
+      dy = 10 * Math.cos((delayR + 1) * 2 * Math.PI);
+      const realI = j >= 0 ?
+        j % this.balls.length :
+        this.balls.length - Math.abs((j % this.balls.length));
+      const pointDirection = this.checkPointDirection(this.balls[realI]);
+      if (pointDirection.dx > 0) {
+        dx *= 1;
+      }
+
+      if (pointDirection.dx < 0) {
+        dx *= -1;
+      }
+
+      if (pointDirection.dy > 0) {
+        dy *= 1;
+      }
+
+      if (pointDirection.dy < 0) {
+        dy *= -1;
+      }
+      TweenMax.to(
+        this.balls[realI],
+        0.3,
+        {
+          x: this.balls[realI].x + dx,
+          y: this.balls[realI].y + dy,
+          originalX: this.balls[realI].x + dx,
+          originalY: this.balls[realI].y + dy,
+          yoyo: true,
+          onComplete: () => {
+            TweenMax.to(
+              this.balls[realI],
+              0.3,
+              {
+                x: this.figures[this.figureIndexes[0]][realI][0],
+                y: this.figures[this.figureIndexes[0]][realI][1],
+                originalX: this.figures[this.figureIndexes[0]][realI][0],
+                originalY: this.figures[this.figureIndexes[0]][realI][1],
+              },
+            );
+          },
+        },
+      ).delay(delayR / 20);
+    }
   }
 
   render = () => {
+    this.time += 0.5;
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.drawBackground();
-    this.ctx.globalCompositeOperation = 'destination-in';
     this.mouse.setPos(this.pos.x, this.pos.y);
-    this.processingPoints(this.pos, this.scale);
-    this.connectDots(this.balls, this.ctx, 'fill');
-    const isInto = this.pos.isInto(this.balls);
-    if (this.isCursorIntoPoly !== isInto) {
-      this.isCursorIntoPoly = isInto;
-      this.isCursorIntoPolyCalback(isInto);
+    this.ctx.save();
+    this.ctx.translate(this.offset.x, this.offset.y);
+    if (this.isStaticAnimationWork) {
+      this.staticAnimation(this.balls, this.time, false);
+      if (this.showShadow) {
+        this.staticAnimation(this.shadow, this.time + 10, true);
+      }
     }
-    this.ctx.globalCompositeOperation = 'source-over';
-    // this.renderShadow(this.balls);
+    // this.processingPoints(this.pos, this.scale);
+    this.connectDots(this.balls, this.ctx, 'fill');
+    this.isInto = this.pos.isInto(this.balls);
+    if (this.isCursorIntoPoly !== this.isInto) {
+      this.handleIntersection();
+      this.isCursorIntoPoly = this.isInto;
+      this.isCursorIntoPolyCalback(this.isInto);
+    }
+    this.ctx.restore();
+    this.ctx.save();
+    this.ctx.clip();
+    this.drawBackground();
+    this.ctx.restore();
+    this.ctx.save();
+    this.ctx.translate(this.offset.x, this.offset.y);
+    if (this.showShadow) {
+      this.connectDots(this.shadow, this.ctx, 'stroke');
+    }
+    this.ctx.restore();
     window.requestAnimationFrame(this.render);
   }
 }
