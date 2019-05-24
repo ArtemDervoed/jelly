@@ -14,36 +14,32 @@ export default class Morphling {
     }
     this.scale = 1;
     this.figures = [];
-    this.radiuses = [];
     this.pointsCount = 100;
-    this.emptyFigure = [];
     this.canvas = null;
     this.ctx = null;
     this.radius = 1;
     this.balls = [];
     this.shadow = [];
     this.isInto = false;
-    this.offset = { x: 100, y: 100 };
+    this.offset = {
+      x: 100,
+      y: 100,
+      originalX: 100,
+      originalY: 100,
+    };
     this.emptyRadiuses = [];
     this.Background = new Background(0, 0, window.innerWidth, window.innerHeight);
     this.simplex = new SimplexNoise();
     this.mouse = null;
     this.figureIndexes = [0, 1];
     this.isStaticAnimationWork = false;
-    this.curentState = 0;
     this.imageMode = 'images';
     this.time = 0;
     this.showShadow = true;
     this.isCursorIntoPolyCalback = () => {};
-    this.mode = {
-      autoChangeImage: false,
-      autoChangeFigure: false,
-      isTransfomining: false,
-      isImageChanging: false,
-    };
     this.isCursorIntoPoly = false;
-    Morphling.instance = this;
     window.addEventListener('resize', this.handleResize);
+    Morphling.instance = this;
   }
 
   handleResize = () => {
@@ -53,18 +49,40 @@ export default class Morphling {
   }
 
   staticAnimation = (balls, time, isNegative) => {
-    balls.forEach((item) => {
-      const n = 12 * this.simplex.noise3D(item.oldX / 330, item.oldY / 330, time / 100);
-      const align = isNegative ? -n : n;
-      TweenMax.to(
-        item,
-        1,
-        {
-          x: item.oldX + align,
-          y: item.oldY + align,
-        },
+    balls.forEach((item, i) => {
+      const n = this.simplex.noise3D(
+        this.figures[this.figureIndexes[0]][i][0] / 330,
+        this.figures[this.figureIndexes[0]][i][1] / 330,
+        time / 100,
       );
+      const align = isNegative ? -n : n;
+      item.setPos(
+        item.x + align,
+        item.y + align,
+      );
+    //   TweenMax.to(
+    //     item,
+    //     1,
+    //     {
+    //       x: this.figures[this.figureIndexes[0]][i][0] + align,
+    //       y: this.figures[this.figureIndexes[0]][i][1] + align,
+    //     },
+    //   );
     });
+    // const n = 8 * this.simplex.noise3D(
+    //   this.offset.originalY / 330,
+    //   this.offset.originalX / 330,
+    //   time / 100,
+    // );
+    // const align = isNegative ? -n : n;
+    // TweenMax.to(
+    //   this.offset,
+    //   1,
+    //   {
+    //     x: this.offset.originalX + align,
+    //     y: this.offset.originalY + align,
+    //   },
+    // );
   }
 
   startStaticAnimation = () => {
@@ -141,7 +159,6 @@ export default class Morphling {
   setFigures = (figures) => {
     this.figures = figures;
     this.pushBalls();
-    this.setNeighbours();
   }
 
   nextImg = () => {
@@ -171,18 +188,6 @@ export default class Morphling {
           this.figures[this.figureIndexes[0]][i][1],
         ),
       );
-    }
-  }
-
-  setNeighbours = () => {
-    for (let i = 0; i < this.pointsCount; i += 1) {
-      if (i === 0) {
-        this.balls[i].setNeighbours([this.balls[this.pointsCount - 1], this.balls[i + 1]]);
-      } else if (i === this.pointsCount - 1) {
-        this.balls[i].setNeighbours([this.balls[i - 1], this.balls[0]]);
-      } else {
-        this.balls[i].setNeighbours([this.balls[i - 1], this.balls[i + 1]]);
-      }
     }
   }
 
@@ -251,8 +256,6 @@ export default class Morphling {
         {
           x: nextFigurePath[i][0],
           y: nextFigurePath[i][1],
-          originalX: nextFigurePath[i][0],
-          originalY: nextFigurePath[i][1],
         },
       );
       TweenMax.to(
@@ -261,17 +264,16 @@ export default class Morphling {
         {
           x: nextFigurePath[i][0],
           y: nextFigurePath[i][1],
-          originalX: nextFigurePath[i][0],
-          originalY: nextFigurePath[i][1],
         },
       );
     }
   }
 
   moveCenter = (x, y) => {
-    // const center = this.getCenter(this.balls);
     this.offset.x = x;
     this.offset.y = y;
+    this.offset.originalX = x;
+    this.offset.originalY = y;
     this.pos.setOffset(x, y);
   }
 
@@ -290,6 +292,7 @@ export default class Morphling {
   }
 
   setFormFullscreen = (duration) => {
+    this.isStaticAnimationWork = false;
     this.changeFigureTo(this.createFullScreenFigure(), duration || 1);
   }
 
@@ -341,8 +344,6 @@ export default class Morphling {
   }
 
   processingPoints = (pos) => {
-    // const nearPointDistIndex = this.calcNearsetPoint(pos);
-    // this.checkCursorDirection(pos);
     this.balls.forEach((ball) => {
       ball.think(pos, 1);
     });
@@ -370,12 +371,12 @@ export default class Morphling {
       delayL += 1;
       let dx = 1;
       let dy = 1;
-      dx = -5 * Math.cos((i) * 2 * Math.PI);
+      dx = -10 * Math.cos((i) * 2 * Math.PI);
       dy = dx;
 
       if (isIntoOld && !this.isInto) {
-        dx *= -2;
-        dy *= -2;
+        dx *= -1;
+        dy *= -1;
       }
       const realI = i % this.balls.length;
       const pointDirection = this.checkPointDirection(this.balls[realI]);
@@ -394,29 +395,27 @@ export default class Morphling {
       if (pointDirection.dy < 0) {
         dy *= -1;
       }
-      const slower = delayL / 10;
+
+      const slower = delayL < 15 ? 1 : delayL / 8;
 
       dx /= slower;
       dy /= slower;
+
       TweenMax.to(
         this.balls[realI],
         0.3,
         {
           x: this.balls[realI].x + dx,
           y: this.balls[realI].y + dy,
-          originalX: this.balls[realI].x + dx,
-          originalY: this.balls[realI].y + dy,
           onComplete: () => {
-            TweenMax.to(
-              this.balls[realI],
-              0.3,
-              {
-                x: this.figures[this.figureIndexes[0]][realI][0],
-                y: this.figures[this.figureIndexes[0]][realI][1],
-                originalX: this.figures[this.figureIndexes[0]][realI][0],
-                originalY: this.figures[this.figureIndexes[0]][realI][1],
-              },
-            );
+            // TweenMax.to(
+            //   this.balls[realI],
+            //   0.5,
+            //   {
+            //     x: this.balls[realI].x,
+            //     y: this.balls[realI].y,
+            //   },
+            // );
           },
         },
       ).delay(delayL / 20);
@@ -427,12 +426,12 @@ export default class Morphling {
       let dx = 1;
       let dy = 1;
 
-      dx = -5 * Math.cos((j) * 2 * Math.PI);
+      dx = -10 * Math.cos((j) * 2 * Math.PI);
       dy = dx;
 
       if (isIntoOld && !this.isInto) {
-        dx *= -2;
-        dy *= -2;
+        dx *= -1;
+        dy *= -1;
       }
 
       const realI = j >= 0 ?
@@ -455,7 +454,7 @@ export default class Morphling {
         dy *= -1;
       }
 
-      const slower = delayR / 10;
+      const slower = delayR < 15 ? 1 : delayR / 8;
 
       dx /= slower;
       dy /= slower;
@@ -466,19 +465,15 @@ export default class Morphling {
         {
           x: this.balls[realI].x + dx,
           y: this.balls[realI].y + dy,
-          originalX: this.balls[realI].x + dx,
-          originalY: this.balls[realI].y + dy,
           onComplete: () => {
-            TweenMax.to(
-              this.balls[realI],
-              0.3,
-              {
-                x: this.figures[this.figureIndexes[0]][realI][0],
-                y: this.figures[this.figureIndexes[0]][realI][1],
-                originalX: this.figures[this.figureIndexes[0]][realI][0],
-                originalY: this.figures[this.figureIndexes[0]][realI][1],
-              },
-            );
+            // TweenMax.to(
+            //   this.balls[realI],
+            //   0.5,
+            //   {
+            //     x: this.balls[realI].x,
+            //     y: this.balls[realI].y,
+            //   },
+            // );
           },
         },
       ).delay(delayR / 20);
@@ -489,16 +484,17 @@ export default class Morphling {
     this.time += 0.5;
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.mouse.setPos(this.pos.x, this.pos.y);
+
     this.ctx.save();
     this.ctx.translate(this.offset.x, this.offset.y);
+    this.connectDots(this.balls, this.ctx, 'fill');
+    this.processingPoints(this.pos);
     if (this.isStaticAnimationWork) {
       this.staticAnimation(this.balls, this.time, false);
       if (this.showShadow) {
         this.staticAnimation(this.shadow, this.time + 10, true);
       }
     }
-    // this.processingPoints(this.pos, this.scale);
-    this.connectDots(this.balls, this.ctx, 'fill');
     const isIntoOld = this.isInto;
     this.isInto = this.pos.isInto(this.balls);
     if (this.isCursorIntoPoly !== this.isInto) {
@@ -507,16 +503,19 @@ export default class Morphling {
       this.isCursorIntoPolyCalback(this.isInto);
     }
     this.ctx.restore();
+
     this.ctx.save();
     this.ctx.clip();
     this.drawBackground();
     this.ctx.restore();
+
     this.ctx.save();
     this.ctx.translate(this.offset.x, this.offset.y);
     if (this.showShadow) {
       this.connectDots(this.shadow, this.ctx, 'stroke');
     }
     this.ctx.restore();
+
     window.requestAnimationFrame(this.render);
   }
 }
