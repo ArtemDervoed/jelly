@@ -27,15 +27,16 @@ export default class Morphling {
       originalX: 100,
       originalY: 100,
     };
+    this.processing = true;
     this.emptyRadiuses = [];
     this.Background = new Background(0, 0, window.innerWidth, window.innerHeight);
     this.simplex = new SimplexNoise();
     this.mouse = null;
     this.figureIndexes = [0, 1];
     this.isStaticAnimationWork = false;
-    this.imageMode = 'images';
+    this.imageMode = 'colors';
     this.time = 0;
-    this.showShadow = true;
+    this.showShadow = false;
     this.isCursorIntoPolyCalback = () => {};
     this.isCursorIntoPoly = false;
     window.addEventListener('resize', this.handleResize);
@@ -49,40 +50,20 @@ export default class Morphling {
   }
 
   staticAnimation = (balls, time, isNegative) => {
-    balls.forEach((item, i) => {
-      const n = this.simplex.noise3D(
-        this.figures[this.figureIndexes[0]][i][0] / 330,
-        this.figures[this.figureIndexes[0]][i][1] / 330,
-        time / 100,
-      );
-      const align = isNegative ? -n : n;
-      item.setPos(
-        item.x + align,
-        item.y + align,
-      );
-    //   TweenMax.to(
-    //     item,
-    //     1,
-    //     {
-    //       x: this.figures[this.figureIndexes[0]][i][0] + align,
-    //       y: this.figures[this.figureIndexes[0]][i][1] + align,
-    //     },
-    //   );
-    });
-    // const n = 8 * this.simplex.noise3D(
-    //   this.offset.originalY / 330,
-    //   this.offset.originalX / 330,
-    //   time / 100,
-    // );
-    // const align = isNegative ? -n : n;
-    // TweenMax.to(
-    //   this.offset,
-    //   1,
-    //   {
-    //     x: this.offset.originalX + align,
-    //     y: this.offset.originalY + align,
-    //   },
-    // );
+    if (this.processing) {
+      balls.forEach((item, i) => {
+        const n = 20 * this.simplex.noise3D(
+          this.figures[this.figureIndexes[0]][i][0] / 330,
+          this.figures[this.figureIndexes[0]][i][1] / 330,
+          time / 100,
+        );
+        const align = isNegative ? -n : n;
+        item.setPos(
+          item.x + align,
+          item.y + align,
+        );
+      });
+    }
   }
 
   startStaticAnimation = () => {
@@ -225,7 +206,7 @@ export default class Morphling {
 
   connectDots = (dots, ctx, fillMode) => {
     ctx.beginPath();
-    for (let i = 0, jlen = dots.length; i <= jlen; ++i) { // eslint-disable-line
+    for (let i = 1, jlen = dots.length; i <= jlen; ++i) { // eslint-disable-line
       const p0 = dots[
         i + 0 >= jlen
           ? i + 0 - jlen // eslint-disable-line
@@ -248,7 +229,7 @@ export default class Morphling {
     }
   }
 
-  changeFigureTo = (nextFigurePath, duration) => {
+  changeFigureTo = (nextFigurePath, duration, calback) => {
     for (let i = 0; i < nextFigurePath.length; i += 1) {
       TweenMax.to(
         this.balls[i],
@@ -256,6 +237,11 @@ export default class Morphling {
         {
           x: nextFigurePath[i][0],
           y: nextFigurePath[i][1],
+          originalX: nextFigurePath[i][0],
+          originalY: nextFigurePath[i][1],
+          onComplete: () => {
+            if (calback) calback();
+          },
         },
       );
       TweenMax.to(
@@ -264,6 +250,8 @@ export default class Morphling {
         {
           x: nextFigurePath[i][0],
           y: nextFigurePath[i][1],
+          originalX: nextFigurePath[i][0],
+          originalY: nextFigurePath[i][1],
         },
       );
     }
@@ -293,14 +281,17 @@ export default class Morphling {
 
   setFormFullscreen = (duration) => {
     this.isStaticAnimationWork = false;
+    this.processing = false;
     this.changeFigureTo(this.createFullScreenFigure(), duration || 1);
   }
 
   setFormFullscreenNow = () => {
+    this.processing = false;
     this.changeFigureTo(this.createFullScreenFigure(), 0);
   }
 
   setFormEmptyState = (duration) => {
+    this.processing = false;
     this.changeFigureTo(
       this.createEmptyFigure(),
       duration || 2,
@@ -308,7 +299,13 @@ export default class Morphling {
   }
 
   restoreTheOriginalForm = (duration) => {
-    this.changeFigureTo(this.figures[this.figureIndexes[0]], duration || 1);
+    this.changeFigureTo(
+      this.figures[this.figureIndexes[0]],
+      duration || 1,
+      () => {
+        this.processing = true;
+      },
+    );
   }
 
   calcNearsetPoint = (mouse) => {
@@ -344,16 +341,18 @@ export default class Morphling {
   }
 
   processingPoints = (pos) => {
-    this.balls.forEach((ball) => {
-      ball.think(pos, 1);
-    });
-    this.shadow.forEach((ball) => {
-      ball.think(pos, 1);
-    });
+    if (this.processing) {
+      this.balls.forEach((ball) => {
+        ball.think(pos, 1);
+      });
+      this.shadow.forEach((ball) => {
+        ball.think(pos, 1);
+      });
+    }
   }
 
   drawBackground = () => {
-    if (this.imageMode === 'color') {
+    if (this.imageMode === 'colors') {
       this.Background.drawColors(this.ctx);
     }
     if (this.imageMode === 'images') {
@@ -361,123 +360,148 @@ export default class Morphling {
     }
   }
 
-  handleIntersection = (isIntoOld) => {
-    const { nearPointIndex } = this.calcNearsetPoint(this.pos);
-    const wavesLength = 50;
-    let delayL = 0;
-    let delayR = 0;
-    const lastPointIndexR = nearPointIndex + wavesLength;
-    for (let i = nearPointIndex; i < lastPointIndexR; i += 1) {
-      delayL += 1;
-      let dx = 1;
-      let dy = 1;
-      dx = -10 * Math.cos((i) * 2 * Math.PI);
-      dy = dx;
+  handleIntersection = (isIntoOld, points, waveIntensive) => {
+    if (this.processing) {
+      this.moveShape(isIntoOld);
+      const { nearPointIndex } = this.calcNearsetPoint(this.pos);
+      const wavesLength = 50;
+      let delayL = 0;
+      let delayR = 0;
+      const lastPointIndexR = nearPointIndex + wavesLength;
+      for (let i = nearPointIndex; i < lastPointIndexR; i += 1) {
+        delayL += 1;
+        let dx = 1;
+        let dy = 1;
+        dx = 30 * Math.cos((i - 0.3) * 2 * Math.PI) * waveIntensive;
+        dy = dx;
 
-      if (isIntoOld && !this.isInto) {
-        dx *= -1;
-        dy *= -1;
-      }
-      const realI = i % this.balls.length;
-      const pointDirection = this.checkPointDirection(this.balls[realI]);
-      if (pointDirection.dx > 0) {
-        dx *= 1;
-      }
+        if (isIntoOld && !this.isInto) {
+          dx *= -1;
+          dy *= -1;
+        }
+        const realI = i % this.balls.length;
+        const pointDirection = this.checkPointDirection(points[realI]);
+        if (pointDirection.dx > 0) {
+          dx *= 1;
+        }
 
-      if (pointDirection.dx < 0) {
-        dx *= -1;
-      }
+        if (pointDirection.dx < 0) {
+          dx *= -1;
+        }
 
-      if (pointDirection.dy > 0) {
-        dy *= 1;
-      }
+        if (pointDirection.dy > 0) {
+          dy *= 1;
+        }
 
-      if (pointDirection.dy < 0) {
-        dy *= -1;
-      }
+        if (pointDirection.dy < 0) {
+          dy *= -1;
+        }
 
-      const slower = delayL < 15 ? 1 : delayL / 8;
+        const slower = delayL;
 
-      dx /= slower;
-      dy /= slower;
+        dx /= slower;
+        dy /= slower;
 
-      TweenMax.to(
-        this.balls[realI],
-        0.3,
-        {
-          x: this.balls[realI].x + dx,
-          y: this.balls[realI].y + dy,
-          onComplete: () => {
-            // TweenMax.to(
-            //   this.balls[realI],
-            //   0.5,
-            //   {
-            //     x: this.balls[realI].x,
-            //     y: this.balls[realI].y,
-            //   },
-            // );
+        TweenMax.to(
+          points[realI],
+          0.3,
+          {
+            x: points[realI].x + dx,
+            y: points[realI].y + dy,
           },
-        },
-      ).delay(delayL / 20);
-    }
-    const lastPointIndexL = nearPointIndex - wavesLength;
-    for (let j = nearPointIndex; j >= lastPointIndexL; j -= 1) {
-      delayR += 1;
-      let dx = 1;
-      let dy = 1;
-
-      dx = -10 * Math.cos((j) * 2 * Math.PI);
-      dy = dx;
-
-      if (isIntoOld && !this.isInto) {
-        dx *= -1;
-        dy *= -1;
+        ).delay(delayL / 100);
       }
+      const lastPointIndexL = nearPointIndex - wavesLength;
+      for (let j = nearPointIndex; j >= lastPointIndexL; j -= 1) {
+        delayR += 1;
+        let dx = 1;
+        let dy = 1;
 
-      const realI = j >= 0 ?
-        j % this.balls.length :
-        this.balls.length - Math.abs((j % this.balls.length));
-      const pointDirection = this.checkPointDirection(this.balls[realI]);
-      if (pointDirection.dx > 0) {
-        dx *= 1;
-      }
+        dx = 30 * Math.cos((j - 0.3) * 2 * Math.PI) * waveIntensive;
+        dy = dx;
 
-      if (pointDirection.dx < 0) {
-        dx *= -1;
-      }
+        if (isIntoOld && !this.isInto) {
+          dx *= -1;
+          dy *= -1;
+        }
 
-      if (pointDirection.dy > 0) {
-        dy *= 1;
-      }
+        const realI = j >= 0 ?
+          j % points.length :
+          points.length - Math.abs((j % points.length));
+        const pointDirection = this.checkPointDirection(points[realI]);
+        if (pointDirection.dx > 0) {
+          dx *= 1;
+        }
 
-      if (pointDirection.dy < 0) {
-        dy *= -1;
-      }
+        if (pointDirection.dx < 0) {
+          dx *= -1;
+        }
 
-      const slower = delayR < 15 ? 1 : delayR / 8;
+        if (pointDirection.dy > 0) {
+          dy *= 1;
+        }
 
-      dx /= slower;
-      dy /= slower;
+        if (pointDirection.dy < 0) {
+          dy *= -1;
+        }
 
-      TweenMax.to(
-        this.balls[realI],
-        0.3,
-        {
-          x: this.balls[realI].x + dx,
-          y: this.balls[realI].y + dy,
-          onComplete: () => {
-            // TweenMax.to(
-            //   this.balls[realI],
-            //   0.5,
-            //   {
-            //     x: this.balls[realI].x,
-            //     y: this.balls[realI].y,
-            //   },
-            // );
+        const slower = delayR;
+
+        dx /= slower;
+        dy /= slower;
+
+        TweenMax.to(
+          points[realI],
+          0.3,
+          {
+            x: points[realI].x + dx,
+            y: points[realI].y + dy,
           },
-        },
-      ).delay(delayR / 20);
+        ).delay(delayR / 100);
+      }
     }
+  }
+
+  moveShape = (oldIsInto) => {
+    const pointDirection = this.checkPointDirection(this.pos);
+    let dx = 3;
+    let dy = 3;
+    if (pointDirection.dx > 0) {
+      dx *= 1;
+    }
+    if (pointDirection.dx < 0) {
+      dx *= -1;
+    }
+
+    if (pointDirection.dy > 0) {
+      dy *= 1;
+    }
+
+    if (pointDirection.dy < 0) {
+      dy *= -1;
+    }
+    if (!oldIsInto) {
+      dx *= -1;
+      dy *= -1;
+    }
+    TweenMax.to(
+      this.offset,
+      0.3,
+      {
+        x: this.offset.x + dx,
+        y: this.offset.y + dy,
+        onComplete: () => {
+          TweenMax.to(
+            this.offset,
+            0.7,
+            {
+              x: this.offset.x - dx,
+              y: this.offset.y - dy,
+            },
+          );
+        },
+      },
+    );
   }
 
   render = () => {
@@ -498,7 +522,10 @@ export default class Morphling {
     const isIntoOld = this.isInto;
     this.isInto = this.pos.isInto(this.balls);
     if (this.isCursorIntoPoly !== this.isInto) {
-      this.handleIntersection(isIntoOld);
+      this.handleIntersection(isIntoOld, this.balls, 0.75);
+      if (this.showShadow) {
+        this.handleIntersection(isIntoOld, this.shadow, 0.5);
+      }
       this.isCursorIntoPoly = this.isInto;
       this.isCursorIntoPolyCalback(this.isInto);
     }

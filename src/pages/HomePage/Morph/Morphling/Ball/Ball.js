@@ -13,9 +13,11 @@ export default class Ball {
     this.vy = 0;
     this.radius = radius || 2;
     this.color = color || '#ff6600';
-    this.friction = 0.2;
-    this.springFactor = 0.5;
-    this.interactionDist = 10;
+    // this.friction = 0.3;
+    // this.springFactor = 0.2;
+    this.friction = 0.95;
+    this.springFactor = 0.25;
+    this.interactionDist = 0;
     this.neighbours = [];
   }
 

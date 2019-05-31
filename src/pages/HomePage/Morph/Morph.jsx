@@ -18,6 +18,7 @@ class Morph extends React.Component {
   componentDidMount() {
     const images = document.getElementsByClassName(styles.hidden);
     this.Morphling.init('canvas');
+    console.log(this.normolizeFigure(vector));
     this.Morphling.setFigures([this.normolizeFigure(vector), this.normolizeFigure(figure)]);
     this.Morphling.setImages(images);
     this.Morphling.setColors(['blue', 'red', 'green']);
@@ -43,7 +44,7 @@ class Morph extends React.Component {
       }
     }
     const temp = [...points];
-    return temp.splice(index).concat(temp);
+    return temp.splice(index - 1).concat(temp);
   }
 
   handlePaused = () => {
